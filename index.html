@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contabilidad del Hogar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['DM Sans', 'sans-serif'], mono: ['DM Mono', 'monospace'] },
+          colors: {
+            surface: { 900: '#0d1117', 800: '#161b22', 700: '#21262d', 600: '#30363d', 500: '#3d444d' },
+            accent: { DEFAULT: '#58a6ff', dim: '#1f6feb' },
+            success: '#3fb950',
+            danger: '#f85149',
+            warn: '#d29922',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'DM Sans', sans-serif; background: #0d1117; color: #e6edf3; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; }
+    .input-field {
+      background: #21262d; border: 1px solid #30363d; border-radius: 8px;
+      color: #e6edf3; padding: 8px 12px; width: 100%; font-size: 14px;
+      transition: border-color .2s;
+    }
+    .input-field:focus { outline: none; border-color: #58a6ff; }
+    .btn-primary {
+      background: #1f6feb; color: #fff; border: none; border-radius: 8px;
+      padding: 10px 20px; font-weight: 600; cursor: pointer; transition: background .2s;
+    }
+    .btn-primary:hover { background: #388bfd; }
+    .btn-secondary {
+      background: #21262d; color: #e6edf3; border: 1px solid #30363d;
+      border-radius: 8px; padding: 8px 16px; font-weight: 500; cursor: pointer; transition: background .2s;
+    }
+    .btn-secondary:hover { background: #30363d; }
+    .btn-danger { background: #da3633; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+    .btn-danger:hover { background: #f85149; }
+    .tab-btn { padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all .2s; border: 1px solid transparent; }
+    .tab-btn.active { background: #1f6feb; color: #fff; }
+    .tab-btn:not(.active) { color: #8b949e; }
+    .tab-btn:not(.active):hover { background: #21262d; color: #e6edf3; }
+    .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .pill-blue { background: #1f6feb33; color: #58a6ff; }
+    .pill-green { background: #3fb95022; color: #3fb950; }
+    .pill-red { background: #f8514922; color: #f85149; }
+    .pill-yellow { background: #d2992222; color: #d29922; }
+    .scroll-thin::-webkit-scrollbar { width: 4px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+    select option { background: #21262d; }
+    .spinner { width: 18px; height: 18px; border: 2px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; padding: 12px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 20px #0008; transform: translateY(80px); opacity: 0; transition: all .3s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: #3fb950; color: #0d1117; }
+    .toast.error { background: #f85149; color: #fff; }
+    @media (max-width: 640px) {
+      .input-field, .btn-primary, .tab-btn { font-size: 16px; padding-top: 12px; padding-bottom: 12px; }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50" style="background:#0d1117cc;backdrop-filter:blur(12px);border-bottom:1px solid #30363d;">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🏠</span>
+      <div>
+        <h1 class="font-bold text-lg leading-tight">Contabilidad del Hogar</h1>
+        <p class="text-xs text-gray-500 font-mono" id="statusBar">Conectando...</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-xs text-gray-400 font-mono whitespace-nowrap">Vista:</label>
+      <select id="globalFilter" class="input-field" style="width:auto;font-size:13px;padding:6px 10px;">
+        <option value="mes_actual">📅 Mes Actual</option>
+        <option value="mes_proyectado">🔮 Mes Proyectado</option>
+        <option value="acumulado_anual">📊 Acumulado Anual</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+  <!-- DASHBOARD CARDS -->
+  <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div class="card p-4">
+      <p class="text-xs text-gray-400 mb-1">Ingresos Totales</p>
+      <p id="cardIngresos" class="text-xl font-bold text-green-400 font-mono">$0</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-gray-400 mb-1">Gastos Totales</p>
+      <p id="cardGastos" class="text-xl font-bold text-red-400 font-mono">$0</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-gray-400 mb-1">Ahorro Neto</p>
+      <p id="cardAhorro" class="text-xl font-bold font-mono">$0</p>
+      <p id="cardAhorroPct" class="text-xs text-gray-500">0%</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs text-gray-400 mb-1">Salario Neto</p>
+      <p id="cardSalario" class="text-xl font-bold text-blue-400 font-mono">$0</p>
+    </div>
+    <div class="card p-4 col-span-2 sm:col-span-1">
+      <p class="text-xs text-gray-400 mb-1">⚠️ Gasto No Nec.</p>
+      <p id="cardNoNec" class="text-xl font-bold text-yellow-400 font-mono">$0</p>
+    </div>
+  </section>
+
+  <!-- TABS -->
+  <div class="flex gap-2 flex-wrap">
+    <button class="tab-btn active" onclick="showTab('dashboard')">📊 Dashboard</button>
+    <button class="tab-btn" onclick="showTab('gastos')">💸 Cargar Gasto</button>
+    <button class="tab-btn" onclick="showTab('ingresos')">💰 Cargar Ingreso</button>
+    <button class="tab-btn" onclick="showTab('movimientos')">📋 Movimientos</button>
+  </div>
+
+  <!-- TAB: DASHBOARD -->
+  <section id="tab-dashboard">
+    <!-- Config proyección -->
+    <div class="card p-4 mb-4" id="configProyeccion" style="display:none;">
+      <h3 class="font-semibold text-sm mb-3 text-gray-300">⚙️ Parámetros de Proyección</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Inflación mensual estimada (%)</label>
+          <input type="number" id="inflacionEstimada" class="input-field" value="4" step="0.5" min="0">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Cuota UVA base ($)</label>
+          <input type="number" id="cuotaUVABase" class="input-field" value="0" step="1000">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Deuda Alejandro (400 USD → $)</label>
+          <input type="number" id="deudaAlejandro" class="input-field" value="0" step="1000">
+        </div>
+      </div>
+      <button class="btn-primary mt-3 text-sm" onclick="recalcular()">Recalcular Proyección</button>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="card p-4">
+        <h3 class="font-semibold text-sm mb-3 text-gray-300">🥧 Gastos Actuales por Tipo</h3>
+        <div class="relative" style="height:280px;">
+          <canvas id="chartActual"></canvas>
+          <p id="chartActualEmpty" class="text-center text-gray-500 text-sm pt-10" style="display:none;">Sin datos</p>
+        </div>
+      </div>
+      <div class="card p-4">
+        <h3 class="font-semibold text-sm mb-3 text-gray-300">🔮 Distribución Proyectada</h3>
+        <div class="relative" style="height:280px;">
+          <canvas id="chartFuturo"></canvas>
+          <p id="chartFuturoEmpty" class="text-center text-gray-500 text-sm pt-10" style="display:none;">Sin datos</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: GASTOS -->
+  <section id="tab-gastos" style="display:none;">
+    <div class="card p-5">
+      <h2 class="font-bold text-base mb-4">💸 Nuevo Gasto</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Fecha *</label>
+          <input type="date" id="g-fecha" class="input-field">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Fijo / Variable *</label>
+          <select id="g-fijo" class="input-field">
+            <option value="">Seleccionar...</option>
+            <option value="FIJO">FIJO</option>
+            <option value="VARIABLE">VARIABLE</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Gasto Necesario *</label>
+          <select id="g-necesario" class="input-field">
+            <option value="">Seleccionar...</option>
+            <option value="Necesario">Necesario</option>
+            <option value="No necesario">No necesario</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Tipo de Gasto *</label>
+          <select id="g-tipo" class="input-field" onchange="actualizarConceptos()">
+            <option value="">Seleccionar tipo...</option>
+            <option>Casa</option>
+            <option>Comida</option>
+            <option>Muebles/Equipos</option>
+            <option>Esparcimiento</option>
+            <option>Medicamentos</option>
+            <option>Gasto animales</option>
+            <option>Movilidad P</option>
+            <option>Movilidad NP</option>
+            <option>Servicio AV</option>
+            <option>Servicios necesarios</option>
+            <option>Impuestos varios</option>
+            <option>Formaciones</option>
+            <option>Inversiones/Publi</option>
+            <option>Colegiatura</option>
+            <option>Regalos</option>
+            <option>Bienestar</option>
+            <option>Ropa/calzados</option>
+            <option>Gastos extras</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Concepto *</label>
+          <select id="g-concepto" class="input-field" onchange="checkOtros()">
+            <option value="">Primero seleccionar tipo...</option>
+          </select>
+        </div>
+        <div id="g-otros-wrap" style="display:none;">
+          <label class="text-xs text-gray-400 block mb-1">Especificar (Otros)</label>
+          <input type="text" id="g-otros-texto" class="input-field" placeholder="Escribir concepto...">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Monto en Pesos ($) *</label>
+          <input type="number" id="g-monto-pesos" class="input-field" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Monto en USD (opcional)</label>
+          <input type="number" id="g-monto-usd" class="input-field" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Estado</label>
+          <select id="g-estado" class="input-field">
+            <option value="ejecutado">Ejecutado (pagado)</option>
+            <option value="proyectado">Proyectado / Futuro</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-5 flex gap-3">
+        <button class="btn-primary" onclick="guardarGasto()">
+          <span id="btnGastoText">💾 Guardar Gasto</span>
+          <span id="btnGastoSpinner" class="spinner ml-2" style="display:none;vertical-align:middle;"></span>
+        </button>
+        <button class="btn-secondary" onclick="limpiarFormGasto()">🗑 Limpiar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: INGRESOS -->
+  <section id="tab-ingresos" style="display:none;">
+    <div class="card p-5">
+      <h2 class="font-bold text-base mb-4">💰 Nuevo Ingreso</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Fecha *</label>
+          <input type="date" id="i-fecha" class="input-field">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Categoría *</label>
+          <select id="i-categoria" class="input-field" onchange="actualizarConceptosIngreso()">
+            <option value="">Seleccionar...</option>
+            <option>Ingresos Javi</option>
+            <option>Ingresos Meli</option>
+            <option>Ingresos extras</option>
+            <option>Impuestos salario</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Concepto *</label>
+          <select id="i-concepto" class="input-field">
+            <option value="">Primero seleccionar categoría...</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Monto en Pesos ($) *</label>
+          <input type="number" id="i-monto" class="input-field" placeholder="0.00" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="mt-5 flex gap-3">
+        <button class="btn-primary" onclick="guardarIngreso()">
+          <span id="btnIngresoText">💾 Guardar Ingreso</span>
+          <span id="btnIngresoSpinner" class="spinner ml-2" style="display:none;vertical-align:middle;"></span>
+        </button>
+        <button class="btn-secondary" onclick="limpiarFormIngreso()">🗑 Limpiar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: MOVIMIENTOS -->
+  <section id="tab-movimientos" style="display:none;">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+      <!-- COLUMNA IZQUIERDA: Ejecutados -->
+      <div class="card p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-sm">✅ Gastos Ejecutados</h3>
+          <span id="countEjecutados" class="pill pill-green">0</span>
+        </div>
+        <div id="listaEjecutados" class="space-y-2 overflow-y-auto scroll-thin" style="max-height:500px;">
+          <p class="text-gray-500 text-sm text-center py-8">Sin datos</p>
+        </div>
+      </div>
+
+      <!-- COLUMNA DERECHA: Proyectados -->
+      <div class="card p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-sm">🔮 Gastos Proyectados / Futuros</h3>
+          <span id="countProyectados" class="pill pill-blue">0</span>
+        </div>
+        <!-- Gastos fijos automáticos -->
+        <div class="mb-3 p-3 rounded-lg" style="background:#21262d;border:1px solid #30363d;">
+          <p class="text-xs text-gray-400 font-semibold mb-2">Compromisos automáticos</p>
+          <div id="listaCompromisosAuto" class="space-y-1 text-xs text-gray-300">
+            <p class="text-gray-500">Configura en Dashboard para ver proyección</p>
+          </div>
+        </div>
+        <div id="listaProyectados" class="space-y-2 overflow-y-auto scroll-thin" style="max-height:380px;">
+          <p class="text-gray-500 text-sm text-center py-4">Sin datos</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Ingresos -->
+    <div class="card p-4 mt-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold text-sm">💰 Ingresos del Período</h3>
+        <span id="countIngresos" class="pill pill-green">0</span>
+      </div>
+      <div id="listaIngresos" class="space-y-2 overflow-y-auto scroll-thin" style="max-height:300px;">
+        <p class="text-gray-500 text-sm text-center py-8">Sin datos</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ============================================================
+// CONFIG SUPABASE
+// ============================================================
+const SUPABASE_URL = typeof process !== 'undefined' && process.env ? process.env.SUPABASE_URL : (window.__SUPABASE_URL__ || '');
+const SUPABASE_KEY = typeof process !== 'undefined' && process.env ? process.env.SUPABASE_KEY : (window.__SUPABASE_KEY__ || '');
+
+let supabase = null;
+try {
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    document.getElementById('statusBar').textContent = 'Conectado a Supabase ✓';
+  } else {
+    document.getElementById('statusBar').textContent = 'Sin credenciales — modo demo';
+  }
+} catch(e) {
+  document.getElementById('statusBar').textContent = 'Error de conexión';
+  console.error(e);
+}
+
+// ============================================================
+// DATOS CONCEPTOS POR TIPO
+// ============================================================
+const CONCEPTOS = {
+  'Casa': ['Hipoteca','Seguro Hipoteca','Cuenta BNA','Expensas','Deuda 42,000 usd+cred','Pinturerias','Colchones','Reparaciones Casa','Otros...'],
+  'Comida': ['Verduleria','Panaderia /pastas / Hel','Pescado','Mayorista','Supermercados','Fiambres','Frutos secos','Carne / pollo','Otros...'],
+  'Muebles/Equipos': ['Electrodomesticos','Essen','Otros...'],
+  'Esparcimiento': ['Delibery / Salidas /Helados','Vacaciones','Otros...'],
+  'Medicamentos': ['Farmacias','Otros...'],
+  'Gasto animales': ['Comida Mishi y NINA','Otros...'],
+  'Movilidad P': ['Seguro Automovil','Combustible','Patente Auto','Neumaticos Calzzeta','Respuesto Auto','Autopista/estacionamiento','Otros...'],
+  'Movilidad NP': ['Movilidad extra/sube','Otros...'],
+  'Servicio AV': ['SpotiFy','Telecom','Otros...'],
+  'Servicios necesarios': ['Gastos de Alpe','Edenor','Gas','ABL','Monotributo','Otros...'],
+  'Impuestos varios': ['TC/Luz/Agua etc','Otros...'],
+  'Formaciones': ['Capacitaciones','Otros...'],
+  'Inversiones/Publi': ['Servicio inversiones','Insumos Pelo / cejas','Gastos tienda/ internet','Otros...'],
+  'Colegiatura': ['Colegio Lola','Otros...'],
+  'Regalos': ['Regalos','Otros...'],
+  'Bienestar': ['Gimnasio/pileta','Gasto Profesionales','Otros...'],
+  'Ropa/calzados': ['Zapatillas/botines','Ropa/vestimenta','Otros...'],
+  'Gastos extras': ['Gastos extras Meli','Gastos extras Javi','Gastos extras Lola','Otros...']
+};
+
+const CONCEPTOS_INGRESO = {
+  'Ingresos Javi': ['Salario','Alpe Ingenieria','Venta','Financiera de activos'],
+  'Ingresos Meli': ['Salario','Venta','Financiera de activos'],
+  'Ingresos extras': ['Venta','Financiera de activos','Otros'],
+  'Impuestos salario': ['Jubilación','Ganancias','O social']
+};
+
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+let allMovimientos = [];
+let allIngresos = [];
+let chartActualInst = null;
+let chartFuturoInst = null;
+let activeTab = 'dashboard';
+
+// ============================================================
+// UTILIDADES
+// ============================================================
+function fmt(n) {
+  return '$' + Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function fmtFecha(str) {
+  if (!str) return '';
+  const d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || 'success') + ' show';
+  setTimeout(() => { t.className = 'toast'; }, 3200);
+}
+
+function getNow() { return new Date(); }
+
+function getFiltroDates() {
+  const filtro = document.getElementById('globalFilter').value;
+  const now = getNow();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  let desde, hasta;
+  if (filtro === 'mes_actual' || filtro === 'mes_proyectado') {
+    desde = new Date(y, m, 1);
+    hasta = new Date(y, m + 1, 0);
+  } else {
+    desde = new Date(y, 0, 1);
+    hasta = new Date(y, 11, 31);
+  }
+  return { desde, hasta, filtro };
+}
+
+function enRango(fechaStr, desde, hasta) {
+  const d = new Date(fechaStr + 'T12:00:00');
+  return d >= desde && d <= hasta;
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+// ============================================================
+// TAB NAVIGATION
+// ============================================================
+function showTab(tab) {
+  activeTab = tab;
+  ['dashboard','gastos','ingresos','movimientos'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = (t === tab) ? '' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    const tabs = ['dashboard','gastos','ingresos','movimientos'];
+    btn.classList.toggle('active', tabs[i] === tab);
+  });
+  const cfg = document.getElementById('configProyeccion');
+  cfg.style.display = (tab === 'dashboard') ? '' : 'none';
+  if (tab === 'dashboard' || tab === 'movimientos') renderAll();
+}
+
+// ============================================================
+// CONCEPTOS DINÁMICOS
+// ============================================================
+function actualizarConceptos() {
+  const tipo = document.getElementById('g-tipo').value;
+  const sel = document.getElementById('g-concepto');
+  sel.innerHTML = '';
+  document.getElementById('g-otros-wrap').style.display = 'none';
+  document.getElementById('g-otros-texto').value = '';
+  if (!tipo || !CONCEPTOS[tipo]) {
+    sel.innerHTML = '<option value="">Primero seleccionar tipo...</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Seleccionar concepto...</option>';
+  CONCEPTOS[tipo].forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+}
+
+function checkOtros() {
+  const val = document.getElementById('g-concepto').value;
+  document.getElementById('g-otros-wrap').style.display = (val === 'Otros...') ? '' : 'none';
+  if (val !== 'Otros...') document.getElementById('g-otros-texto').value = '';
+}
+
+function actualizarConceptosIngreso() {
+  const cat = document.getElementById('i-categoria').value;
+  const sel = document.getElementById('i-concepto');
+  sel.innerHTML = '';
+  if (!cat || !CONCEPTOS_INGRESO[cat]) {
+    sel.innerHTML = '<option value="">Primero seleccionar categoría...</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Seleccionar concepto...</option>';
+  CONCEPTOS_INGRESO[cat].forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+}
+
+// ============================================================
+// GUARDAR GASTO
+// ============================================================
+async function guardarGasto() {
+  const fecha = document.getElementById('g-fecha').value;
+  const fijo = document.getElementById('g-fijo').value;
+  const necesario = document.getElementById('g-necesario').value;
+  const tipo = document.getElementById('g-tipo').value;
+  const conceptoSel = document.getElementById('g-concepto').value;
+  const otrosTexto = document.getElementById('g-otros-texto').value.trim();
+  const montoPesos = parseFloat(document.getElementById('g-monto-pesos').value) || 0;
+  const montoUSD = parseFloat(document.getElementById('g-monto-usd').value) || 0;
+  const estado = document.getElementById('g-estado').value;
+
+  const concepto = (conceptoSel === 'Otros...' && otrosTexto) ? otrosTexto : conceptoSel;
+
+  if (!fecha || !fijo || !necesario || !tipo || !conceptoSel || montoPesos <= 0) {
+    showToast('Por favor completá todos los campos obligatorios', 'error'); return;
+  }
+  if (conceptoSel === 'Otros...' && !otrosTexto) {
+    showToast('Escribí el concepto en el campo "Otros"', 'error'); return;
+  }
+
+  const row = { fecha, tipo_movimiento: 'gasto', fijo, necesario, tipo_gasto: tipo, concepto, monto_pesos: montoPesos, monto_usd: montoUSD || null, estado };
+
+  document.getElementById('btnGastoText').style.display = 'none';
+  document.getElementById('btnGastoSpinner').style.display = 'inline-block';
+
+  try {
+    if (supabase) {
+      const { error } = await supabase.from('movimientos_hogar').insert([row]);
+      if (error) throw error;
+    }
+    allMovimientos.push({ ...row, id: Date.now() });
+    showToast('Gasto guardado correctamente ✓');
+    limpiarFormGasto();
+    renderAll();
+  } catch(e) {
+    showToast('Error al guardar: ' + e.message, 'error');
+  } finally {
+    document.getElementById('btnGastoText').style.display = '';
+    document.getElementById('btnGastoSpinner').style.display = 'none';
+  }
+}
+
+// ============================================================
+// GUARDAR INGRESO
+// ============================================================
+async function guardarIngreso() {
+  const fecha = document.getElementById('i-fecha').value;
+  const categoria = document.getElementById('i-categoria').value;
+  const concepto = document.getElementById('i-concepto').value;
+  const monto = parseFloat(document.getElementById('i-monto').value) || 0;
+
+  if (!fecha || !categoria || !concepto || monto <= 0) {
+    showToast('Completá todos los campos', 'error'); return;
+  }
+
+  const row = { fecha, tipo_movimiento: 'ingreso', categoria_ingreso: categoria, concepto, monto_pesos: monto };
+
+  document.getElementById('btnIngresoText').style.display = 'none';
+  document.getElementById('btnIngresoSpinner').style.display = 'inline-block';
+
+  try {
+    if (supabase) {
+      const { error } = await supabase.from('movimientos_hogar').insert([row]);
+      if (error) throw error;
+    }
+    allIngresos.push({ ...row, id: Date.now() });
+    showToast('Ingreso guardado correctamente ✓');
+    limpiarFormIngreso();
+    renderAll();
+  } catch(e) {
+    showToast('Error al guardar: ' + e.message, 'error');
+  } finally {
+    document.getElementById('btnIngresoText').style.display = '';
+    document.getElementById('btnIngresoSpinner').style.display = 'none';
+  }
+}
+
+// ============================================================
+// LIMPIAR FORMULARIOS
+// ============================================================
+function limpiarFormGasto() {
+  ['g-fecha','g-fijo','g-necesario','g-tipo','g-monto-pesos','g-monto-usd'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('g-estado').value = 'ejecutado';
+  document.getElementById('g-concepto').innerHTML = '<option value="">Primero seleccionar tipo...</option>';
+  document.getElementById('g-otros-wrap').style.display = 'none';
+  document.getElementById('g-otros-texto').value = '';
+}
+
+function limpiarFormIngreso() {
+  ['i-fecha','i-categoria','i-monto'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('i-concepto').innerHTML = '<option value="">Primero seleccionar categoría...</option>';
+}
+
+// ============================================================
+// ELIMINAR MOVIMIENTO
+// ============================================================
+async function eliminarMovimiento(id, tipo) {
+  if (!confirm('¿Eliminar este movimiento?')) return;
+  try {
+    if (supabase) {
+      const { error } = await supabase.from('movimientos_hogar').delete().eq('id', id);
+      if (error) throw error;
+    }
+    if (tipo === 'ingreso') {
+      allIngresos = allIngresos.filter(r => r.id !== id);
+    } else {
+      allMovimientos = allMovimientos.filter(r => r.id !== id);
+    }
+    showToast('Eliminado');
+    renderAll();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// CARGAR DATOS DESDE SUPABASE
+// ============================================================
+async function cargarDatos() {
+  if (!supabase) return;
+  try {
+    const { data, error } = await supabase
+      .from('movimientos_hogar')
+      .select('*')
+      .order('fecha', { ascending: false });
+    if (error) throw error;
+    allMovimientos = (data || []).filter(r => r.tipo_movimiento === 'gasto');
+    allIngresos = (data || []).filter(r => r.tipo_movimiento === 'ingreso');
+    renderAll();
+  } catch(e) {
+    showToast('Error cargando datos: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function renderAll() {
+  const { desde, hasta, filtro } = getFiltroDates();
+
+  // Filtrar
+  const gastosFiltrados = allMovimientos.filter(r => enRango(r.fecha, desde, hasta));
+  const ingresosFiltrados = allIngresos.filter(r => enRango(r.fecha, desde, hasta));
+
+  const ejecutados = gastosFiltrados.filter(r => r.estado === 'ejecutado' || !r.estado);
+  const proyectados = gastosFiltrados.filter(r => r.estado === 'proyectado');
+
+  // Gastos proyectados automáticos
+  const inflacion = parseFloat(document.getElementById('inflacionEstimada').value) || 0;
+  const cuotaUVABase = parseFloat(document.getElementById('cuotaUVABase').value) || 0;
+  const deudaAlej = parseFloat(document.getElementById('deudaAlejandro').value) || 0;
+  const cuotaUVAProyectada = cuotaUVABase * (1 + inflacion / 100);
+
+  // Totales
+  const totalEjecutado = ejecutados.reduce((s, r) => s + (r.monto_pesos || 0), 0);
+  const totalProyectadoManual = proyectados.reduce((s, r) => s + (r.monto_pesos || 0), 0);
+  const gastosAuto = cuotaUVAProyectada + deudaAlej;
+  const totalProyectado = totalProyectadoManual + gastosAuto;
+
+  let totalGastos = totalEjecutado;
+  if (filtro === 'mes_proyectado') totalGastos = totalEjecutado + totalProyectado;
+
+  const totalIngresos = ingresosFiltrados.reduce((s, r) => s + (r.monto_pesos || 0), 0);
+
+  // Impuestos (Jubilación, Ganancias, O social)
+  const impuestos = ingresosFiltrados
+    .filter(r => r.categoria_ingreso === 'Impuestos salario')
+    .reduce((s, r) => s + (r.monto_pesos || 0), 0);
+
+  const salarioNeto = totalIngresos - impuestos;
+  const ahorro = totalIngresos - totalGastos;
+  const ahorroPct = totalIngresos > 0 ? ((ahorro / totalIngresos) * 100).toFixed(1) : 0;
+  const noNecesario = ejecutados.filter(r => r.necesario === 'No necesario').reduce((s, r) => s + (r.monto_pesos || 0), 0);
+
+  // Cards
+  document.getElementById('cardIngresos').textContent = fmt(totalIngresos);
+  document.getElementById('cardGastos').textContent = fmt(totalGastos);
+  const cardAhorro = document.getElementById('cardAhorro');
+  cardAhorro.textContent = fmt(ahorro);
+  cardAhorro.className = 'text-xl font-bold font-mono ' + (ahorro >= 0 ? 'text-green-400' : 'text-red-400');
+  document.getElementById('cardAhorroPct').textContent = ahorroPct + '% del ingreso';
+  document.getElementById('cardSalario').textContent = fmt(salarioNeto);
+  document.getElementById('cardNoNec').textContent = fmt(noNecesario);
+
+  // Compromisos automáticos
+  const listaAuto = document.getElementById('listaCompromisosAuto');
+  if (cuotaUVABase > 0 || deudaAlej > 0) {
+    let html = '';
+    if (cuotaUVABase > 0) html += `<div class="flex justify-between"><span>Cuota UVA (+${inflacion}%)</span><span class="font-mono text-blue-300">${fmt(cuotaUVAProyectada)}</span></div>`;
+    if (deudaAlej > 0) html += `<div class="flex justify-between"><span>Deuda Alejandro (400 USD)</span><span class="font-mono text-blue-300">${fmt(deudaAlej)}</span></div>`;
+    listaAuto.innerHTML = html;
+  } else {
+    listaAuto.innerHTML = '<p class="text-gray-500">Configura en Dashboard para ver proyección</p>';
+  }
+
+  // Listas de movimientos
+  renderLista('listaEjecutados', ejecutados, 'gasto');
+  renderLista('listaProyectados', proyectados, 'gasto');
+  renderLista('listaIngresos', ingresosFiltrados, 'ingreso');
+
+  document.getElementById('countEjecutados').textContent = ejecutados.length;
+  document.getElementById('countProyectados').textContent = proyectados.length;
+  document.getElementById('countIngresos').textContent = ingresosFiltrados.length;
+
+  // Gráficos
+  renderCharts(ejecutados, proyectados, cuotaUVAProyectada, deudaAlej);
+}
+
+// ============================================================
+// RENDER LISTA
+// ============================================================
+function renderLista(containerId, items, tipo) {
+  const el = document.getElementById(containerId);
+  if (!items || items.length === 0) {
+    el.innerHTML = '<p class="text-gray-500 text-sm text-center py-6">Sin datos para este período</p>';
+    return;
+  }
+  el.innerHTML = items.map(r => {
+    const esTipo = tipo === 'ingreso';
+    const concepto = r.concepto || '—';
+    const categoria = esTipo ? (r.categoria_ingreso || '') : (r.tipo_gasto || '');
+    const pillClass = esTipo ? 'pill-green' : (r.necesario === 'No necesario' ? 'pill-yellow' : 'pill-blue');
+    const montoColor = esTipo ? 'text-green-400' : 'text-red-400';
+    const signo = esTipo ? '+' : '-';
+    return `<div class="flex items-start gap-2 p-2 rounded-lg hover:bg-surface-700 transition-colors" style="background:#21262d10;border:1px solid #30363d20;">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-mono text-gray-400">${fmtFecha(r.fecha)}</span>
+          <span class="pill ${pillClass} truncate max-w-28">${categoria}</span>
+          ${r.fijo ? `<span class="pill" style="background:#8b949e22;color:#8b949e">${r.fijo}</span>` : ''}
+        </div>
+        <p class="text-sm mt-0.5 truncate">${concepto}</p>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <p class="font-mono font-bold text-sm ${montoColor}">${signo}${fmt(r.monto_pesos)}</p>
+        ${r.monto_usd ? `<p class="text-xs text-gray-500 font-mono">USD ${r.monto_usd}</p>` : ''}
+        <button class="btn-danger mt-1" onclick="eliminarMovimiento(${r.id}, '${tipo}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// RENDER CHARTS
+// ============================================================
+const CHART_COLORS = [
+  '#58a6ff','#3fb950','#f85149','#d29922','#bc8cff',
+  '#ff7b72','#79c0ff','#56d364','#ffa657','#e3b341',
+  '#89d4f5','#ff9492','#b392f0','#7ee787','#ffdcd7'
+];
+
+function renderCharts(ejecutados, proyectados, cuotaUVA, deudaAlej) {
+  // Agrupar por tipo_gasto
+  const agruparPorTipo = (arr) => {
+    const map = {};
+    arr.forEach(r => {
+      const k = r.tipo_gasto || 'Otros';
+      map[k] = (map[k] || 0) + (r.monto_pesos || 0);
+    });
+    return map;
+  };
+
+  const grupoActual = agruparPorTipo(ejecutados);
+  const grupoFuturo = { ...agruparPorTipo(ejecutados) };
+
+  // Agregar proyectados
+  proyectados.forEach(r => {
+    const k = r.tipo_gasto || 'Otros';
+    grupoFuturo[k] = (grupoFuturo[k] || 0) + (r.monto_pesos || 0);
+  });
+  if (cuotaUVA > 0) grupoFuturo['Casa'] = (grupoFuturo['Casa'] || 0) + cuotaUVA;
+  if (deudaAlej > 0) grupoFuturo['Casa'] = (grupoFuturo['Casa'] || 0) + deudaAlej;
+
+  buildDonut('chartActual', 'chartActualEmpty', grupoActual);
+  buildDonut('chartFuturo', 'chartFuturoEmpty', grupoFuturo);
+}
+
+function buildDonut(canvasId, emptyId, data) {
+  const canvas = document.getElementById(canvasId);
+  const emptyEl = document.getElementById(emptyId);
+  const keys = Object.keys(data).filter(k => data[k] > 0);
+
+  if (keys.length === 0) {
+    canvas.style.display = 'none';
+    emptyEl.style.display = '';
+    return;
+  }
+  canvas.style.display = '';
+  emptyEl.style.display = 'none';
+
+  const values = keys.map(k => data[k]);
+  const total = values.reduce((a, b) => a + b, 0);
+
+  // Destruir instancia anterior si existe
+  if (canvasId === 'chartActual' && chartActualInst) { chartActualInst.destroy(); chartActualInst = null; }
+  if (canvasId === 'chartFuturo' && chartFuturoInst) { chartFuturoInst.destroy(); chartFuturoInst = null; }
+
+  const inst = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: keys,
+      datasets: [{
+        data: values,
+        backgroundColor: CHART_COLORS.slice(0, keys.length),
+        borderColor: '#161b22',
+        borderWidth: 2,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#8b949e', font: { size: 11 }, padding: 12, boxWidth: 12 }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const val = ctx.parsed;
+              const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+              return ` ${ctx.label}: ${fmt(val)} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (canvasId === 'chartActual') chartActualInst = inst;
+  else chartFuturoInst = inst;
+}
+
+// ============================================================
+// RECALCULAR (BOTÓN)
+// ============================================================
+function recalcular() { renderAll(); showToast('Proyección recalculada'); }
+
+// ============================================================
+// EVENTO FILTRO GLOBAL
+// ============================================================
+document.getElementById('globalFilter').addEventListener('change', renderAll);
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  // Fecha hoy por defecto
+  document.getElementById('g-fecha').value = todayStr();
+  document.getElementById('i-fecha').value = todayStr();
+
+  // Panel config siempre visible en dashboard
+  document.getElementById('configProyeccion').style.display = '';
+
+  cargarDatos();
+});
+</script>
+</body>
+</html>

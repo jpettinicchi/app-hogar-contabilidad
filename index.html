@@ -1,1088 +1,811 @@
 <!DOCTYPE html>
 <html lang="es" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Contabilidad del Hogar</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: { sans: ['DM Sans', 'sans-serif'], mono: ['DM Mono', 'monospace'] }
-        }
-      }
-    }
-  </script>
-  <style>
-    body { font-family: 'DM Sans', sans-serif; background: #0d1117; color: #e6edf3; }
-    .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; }
-    .input-field {
-      background: #21262d; border: 1px solid #30363d; border-radius: 8px;
-      color: #e6edf3; padding: 8px 12px; width: 100%; font-size: 14px;
-      transition: border-color .2s;
-    }
-    .input-field:focus { outline: none; border-color: #58a6ff; }
-    .btn-primary {
-      background: #1f6feb; color: #fff; border: none; border-radius: 8px;
-      padding: 10px 20px; font-weight: 600; cursor: pointer; transition: background .2s;
-    }
-    .btn-primary:hover { background: #388bfd; }
-    .btn-secondary {
-      background: #21262d; color: #e6edf3; border: 1px solid #30363d;
-      border-radius: 8px; padding: 8px 16px; font-weight: 500; cursor: pointer; transition: background .2s;
-    }
-    .btn-secondary:hover { background: #30363d; }
-    .btn-danger { background: #da3633; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
-    .btn-danger:hover { background: #f85149; }
-    .tab-btn { padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all .2s; border: 1px solid transparent; }
-    .tab-btn.active { background: #1f6feb; color: #fff; }
-    .tab-btn:not(.active) { color: #8b949e; }
-    .tab-btn:not(.active):hover { background: #21262d; color: #e6edf3; }
-    .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .pill-blue { background: #1f6feb33; color: #58a6ff; }
-    .pill-green { background: #3fb95022; color: #3fb950; }
-    .pill-red { background: #f8514922; color: #f85149; }
-    .pill-yellow { background: #d2992222; color: #d29922; }
-    .scroll-thin::-webkit-scrollbar { width: 4px; }
-    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
-    .scroll-thin::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
-    select option { background: #21262d; }
-    .spinner { width: 18px; height: 18px; border: 2px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: middle; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; padding: 12px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 20px #0008; transform: translateY(80px); opacity: 0; transition: all .3s; pointer-events:none; }
-    .toast.show { transform: translateY(0); opacity: 1; }
-    .toast.success { background: #3fb950; color: #0d1117; }
-    .toast.error { background: #f85149; color: #fff; }
-    /* MODAL CREDENCIALES */
-    #modalCreds {
-      position: fixed; inset: 0; z-index: 10000;
-      background: rgba(1,4,9,0.85); backdrop-filter: blur(6px);
-      display: flex; align-items: center; justify-content: center; padding: 16px;
-    }
-    #modalCreds .modal-box {
-      background: #161b22; border: 1px solid #30363d; border-radius: 16px;
-      width: 100%; max-width: 480px; padding: 28px 24px;
-      box-shadow: 0 24px 64px #000a;
-      animation: slideUp .35s cubic-bezier(.16,1,.3,1);
-    }
-    @keyframes slideUp { from { transform: translateY(32px); opacity:0; } to { transform: translateY(0); opacity:1; } }
-    .cred-input {
-      background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
-      color: #e6edf3; padding: 10px 14px; width: 100%; font-size: 13px;
-      font-family: 'DM Mono', monospace; transition: border-color .2s; margin-top: 6px;
-    }
-    .cred-input:focus { outline: none; border-color: #58a6ff; }
-    .cred-label { font-size: 12px; color: #8b949e; font-weight: 500; }
-    @media (max-width: 640px) {
-      .input-field { font-size: 16px; }
-      .btn-primary { font-size: 15px; padding: 12px 20px; }
-    }
-  </style>
-</head>
-<body class="min-h-screen">
-
-<!-- ═══════════════════════════════════════════
-     MODAL CREDENCIALES SUPABASE
-═══════════════════════════════════════════ -->
-<div id="modalCreds" style="display:none;">
-  <div class="modal-box">
-    <div class="flex items-center gap-3 mb-5">
-      <span style="font-size:28px;">🔑</span>
-      <div>
-        <h2 class="font-bold text-base">Configurar conexión</h2>
-        <p class="text-xs text-gray-400 mt-0.5">Solo se pide la primera vez · Se guarda en este dispositivo</p>
-      </div>
-    </div>
-
-    <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:12px 14px;margin-bottom:18px;">
-      <p class="text-xs text-gray-400 leading-relaxed">
-        Encontrás estos datos en tu proyecto de Supabase →
-        <span class="text-blue-400">Settings → API</span>.
-        La <strong class="text-gray-200">URL</strong> y la clave <strong class="text-gray-200">anon/public</strong>.
-      </p>
-    </div>
-
-    <div class="space-y-4">
-      <div>
-        <label class="cred-label">Supabase URL *</label>
-        <input type="url" id="credUrl" class="cred-input" placeholder="https://xxxxxxxxxxxx.supabase.co" autocomplete="off" spellcheck="false">
-      </div>
-      <div>
-        <label class="cred-label">Anon Key (clave pública) *</label>
-        <input type="password" id="credKey" class="cred-input" placeholder="eyJhbGci..." autocomplete="off" spellcheck="false">
-        <p class="text-xs text-gray-500 mt-1">Se guarda encriptada en localStorage de este navegador</p>
-      </div>
-    </div>
-
-    <div id="credError" style="display:none;margin-top:12px;padding:10px 14px;background:#f8514918;border:1px solid #f8514944;border-radius:8px;">
-      <p id="credErrorMsg" class="text-xs text-red-400"></p>
-    </div>
-
-    <div class="flex gap-3 mt-6">
-      <button class="btn-primary flex-1" onclick="guardarCredenciales()">
-        <span id="credBtnText">Conectar y guardar</span>
-        <span id="credSpinner" class="spinner ml-2" style="display:none;"></span>
-      </button>
-    </div>
-
-    <p class="text-xs text-gray-500 text-center mt-4">
-      Para cambiar las credenciales luego, usá el botón ⚙️ en el header.
-    </p>
-  </div>
-</div>
-
-<!-- TOAST -->
-<div id="toast" class="toast"></div>
-
-<!-- ═══════════════════════════════════════════
-     HEADER
-═══════════════════════════════════════════ -->
-<header class="sticky top-0 z-50" style="background:#0d1117cc;backdrop-filter:blur(12px);border-bottom:1px solid #30363d;">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    <div class="flex items-center gap-3">
-      <span class="text-2xl">🏠</span>
-      <div>
-        <h1 class="font-bold text-lg leading-tight">Contabilidad del Hogar</h1>
-        <p class="text-xs font-mono" id="statusBar" style="color:#8b949e;">Iniciando...</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-2">
-      <button onclick="abrirModalCreds()" title="Cambiar credenciales Supabase"
-        style="background:#21262d;border:1px solid #30363d;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;line-height:1;">⚙️</button>
-      <label class="text-xs text-gray-400 font-mono whitespace-nowrap">Vista:</label>
-      <select id="globalFilter" class="input-field" style="width:auto;font-size:13px;padding:6px 10px;">
-        <option value="mes_actual">📅 Mes Actual</option>
-        <option value="mes_proyectado">🔮 Mes Proyectado</option>
-        <option value="acumulado_anual">📊 Acumulado Anual</option>
-      </select>
-    </div>
-  </div>
-</header>
-
-<!-- ═══════════════════════════════════════════
-     MAIN
-═══════════════════════════════════════════ -->
-<main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-
-  <!-- DASHBOARD CARDS -->
-  <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-    <div class="card p-4">
-      <p class="text-xs text-gray-400 mb-1">Ingresos Totales</p>
-      <p id="cardIngresos" class="text-xl font-bold text-green-400 font-mono">$0</p>
-    </div>
-    <div class="card p-4">
-      <p class="text-xs text-gray-400 mb-1">Gastos Totales</p>
-      <p id="cardGastos" class="text-xl font-bold text-red-400 font-mono">$0</p>
-    </div>
-    <div class="card p-4">
-      <p class="text-xs text-gray-400 mb-1">Ahorro Neto</p>
-      <p id="cardAhorro" class="text-xl font-bold font-mono">$0</p>
-      <p id="cardAhorroPct" class="text-xs text-gray-500">0%</p>
-    </div>
-    <div class="card p-4">
-      <p class="text-xs text-gray-400 mb-1">Salario Neto</p>
-      <p id="cardSalario" class="text-xl font-bold text-blue-400 font-mono">$0</p>
-    </div>
-    <div class="card p-4 col-span-2 sm:col-span-1">
-      <p class="text-xs text-gray-400 mb-1">⚠️ Gasto No Nec.</p>
-      <p id="cardNoNec" class="text-xl font-bold text-yellow-400 font-mono">$0</p>
-    </div>
-  </section>
-
-  <!-- TABS -->
-  <div class="flex gap-2 flex-wrap">
-    <button class="tab-btn active" onclick="showTab('dashboard')">📊 Dashboard</button>
-    <button class="tab-btn" onclick="showTab('gastos')">💸 Cargar Gasto</button>
-    <button class="tab-btn" onclick="showTab('ingresos')">💰 Cargar Ingreso</button>
-    <button class="tab-btn" onclick="showTab('movimientos')">📋 Movimientos</button>
-  </div>
-
-  <!-- TAB: DASHBOARD -->
-  <section id="tab-dashboard">
-    <div class="card p-4 mb-4" id="configProyeccion">
-      <h3 class="font-semibold text-sm mb-3 text-gray-300">⚙️ Parámetros de Proyección</h3>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Inflación mensual estimada (%)</label>
-          <input type="number" id="inflacionEstimada" class="input-field" value="4" step="0.5" min="0">
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Cuota UVA base ($)</label>
-          <input type="number" id="cuotaUVABase" class="input-field" value="0" step="1000">
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Deuda Alejandro (400 USD → $)</label>
-          <input type="number" id="deudaAlejandro" class="input-field" value="0" step="1000">
-        </div>
-      </div>
-      <button class="btn-primary mt-3 text-sm" onclick="recalcular()">Recalcular Proyección</button>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="card p-4">
-        <h3 class="font-semibold text-sm mb-3 text-gray-300">🥧 Gastos Actuales por Tipo</h3>
-        <div class="relative" style="height:280px;">
-          <canvas id="chartActual"></canvas>
-          <p id="chartActualEmpty" class="text-center text-gray-500 text-sm pt-10" style="display:none;">Sin datos</p>
-        </div>
-      </div>
-      <div class="card p-4">
-        <h3 class="font-semibold text-sm mb-3 text-gray-300">🔮 Distribución Proyectada</h3>
-        <div class="relative" style="height:280px;">
-          <canvas id="chartFuturo"></canvas>
-          <p id="chartFuturoEmpty" class="text-center text-gray-500 text-sm pt-10" style="display:none;">Sin datos</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- TAB: GASTOS -->
-  <section id="tab-gastos" style="display:none;">
-    <div class="card p-5">
-      <h2 class="font-bold text-base mb-4">💸 Nuevo Gasto</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Fecha *</label>
-          <input type="date" id="g-fecha" class="input-field">
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Fijo / Variable *</label>
-          <select id="g-fijo" class="input-field">
-            <option value="">Seleccionar...</option>
-            <option value="FIJO">FIJO</option>
-            <option value="VARIABLE">VARIABLE</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Gasto Necesario *</label>
-          <select id="g-necesario" class="input-field">
-            <option value="">Seleccionar...</option>
-            <option value="Necesario">Necesario</option>
-            <option value="No necesario">No necesario</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Tipo de Gasto *</label>
-          <select id="g-tipo" class="input-field" onchange="actualizarConceptos()">
-            <option value="">Seleccionar tipo...</option>
-            <option>Casa</option>
-            <option>Comida</option>
-            <option>Muebles/Equipos</option>
-            <option>Esparcimiento</option>
-            <option>Medicamentos</option>
-            <option>Gasto animales</option>
-            <option>Movilidad P</option>
-            <option>Movilidad NP</option>
-            <option>Servicio AV</option>
-            <option>Servicios necesarios</option>
-            <option>Impuestos varios</option>
-            <option>Formaciones</option>
-            <option>Inversiones/Publi</option>
-            <option>Colegiatura</option>
-            <option>Regalos</option>
-            <option>Bienestar</option>
-            <option>Ropa/calzados</option>
-            <option>Gastos extras</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Concepto *</label>
-          <select id="g-concepto" class="input-field" onchange="checkOtros()">
-            <option value="">Primero seleccionar tipo...</option>
-          </select>
-        </div>
-        <div id="g-otros-wrap" style="display:none;">
-          <label class="text-xs text-gray-400 block mb-1">Especificar (Otros)</label>
-          <input type="text" id="g-otros-texto" class="input-field" placeholder="Escribir concepto...">
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Monto en Pesos ($) *</label>
-          <input type="number" id="g-monto-pesos" class="input-field" placeholder="0.00" step="0.01" min="0">
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Monto en USD (opcional)</label>
-          <input type="number" id="g-monto-usd" class="input-field" placeholder="0.00" step="0.01" min="0">
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Estado</label>
-          <select id="g-estado" class="input-field">
-            <option value="ejecutado">Ejecutado (pagado)</option>
-            <option value="proyectado">Proyectado / Futuro</option>
-          </select>
-        </div>
-      </div>
-      <div class="mt-5 flex gap-3 flex-wrap">
-        <button class="btn-primary" onclick="guardarGasto()">
-          <span id="btnGastoText">💾 Guardar Gasto</span>
-          <span id="btnGastoSpinner" class="spinner ml-2" style="display:none;"></span>
-        </button>
-        <button class="btn-secondary" onclick="limpiarFormGasto()">🗑 Limpiar</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- TAB: INGRESOS -->
-  <section id="tab-ingresos" style="display:none;">
-    <div class="card p-5">
-      <h2 class="font-bold text-base mb-4">💰 Nuevo Ingreso</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Fecha *</label>
-          <input type="date" id="i-fecha" class="input-field">
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Categoría *</label>
-          <select id="i-categoria" class="input-field" onchange="actualizarConceptosIngreso()">
-            <option value="">Seleccionar...</option>
-            <option>Ingresos Javi</option>
-            <option>Ingresos Meli</option>
-            <option>Ingresos extras</option>
-            <option>Impuestos salario</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Concepto *</label>
-          <select id="i-concepto" class="input-field">
-            <option value="">Primero seleccionar categoría...</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-gray-400 block mb-1">Monto en Pesos ($) *</label>
-          <input type="number" id="i-monto" class="input-field" placeholder="0.00" step="0.01" min="0">
-        </div>
-      </div>
-      <div class="mt-5 flex gap-3 flex-wrap">
-        <button class="btn-primary" onclick="guardarIngreso()">
-          <span id="btnIngresoText">💾 Guardar Ingreso</span>
-          <span id="btnIngresoSpinner" class="spinner ml-2" style="display:none;"></span>
-        </button>
-        <button class="btn-secondary" onclick="limpiarFormIngreso()">🗑 Limpiar</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- TAB: MOVIMIENTOS -->
-  <section id="tab-movimientos" style="display:none;">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-      <div class="card p-4">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-semibold text-sm">✅ Gastos Ejecutados</h3>
-          <span id="countEjecutados" class="pill pill-green">0</span>
-        </div>
-        <div id="listaEjecutados" class="space-y-2 overflow-y-auto scroll-thin" style="max-height:500px;">
-          <p class="text-gray-500 text-sm text-center py-8">Sin datos</p>
-        </div>
-      </div>
-
-      <div class="card p-4">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-semibold text-sm">🔮 Gastos Proyectados / Futuros</h3>
-          <span id="countProyectados" class="pill pill-blue">0</span>
-        </div>
-        <div class="mb-3 p-3 rounded-lg" style="background:#21262d;border:1px solid #30363d;">
-          <p class="text-xs text-gray-400 font-semibold mb-2">Compromisos automáticos</p>
-          <div id="listaCompromisosAuto" class="space-y-1 text-xs text-gray-300">
-            <p class="text-gray-500">Configura en Dashboard para ver proyección</p>
-          </div>
-        </div>
-        <div id="listaProyectados" class="space-y-2 overflow-y-auto scroll-thin" style="max-height:380px;">
-          <p class="text-gray-500 text-sm text-center py-4">Sin datos</p>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="card p-4 mt-4">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="font-semibold text-sm">💰 Ingresos del Período</h3>
-        <span id="countIngresos" class="pill pill-green">0</span>
-      </div>
-      <div id="listaIngresos" class="space-y-2 overflow-y-auto scroll-thin" style="max-height:300px;">
-        <p class="text-gray-500 text-sm text-center py-8">Sin datos</p>
-      </div>
-    </div>
-  </section>
-
-</main>
-
-<!-- ═══════════════════════════════════════════
-     JAVASCRIPT
-═══════════════════════════════════════════ -->
-<script>
-'use strict';
-
-// ─────────────────────────────────────────────
-// 1. CREDENCIALES — Orden de prioridad:
-//    a) Variables inyectadas por Vercel en window (via _app.js o similar)
-//    b) localStorage guardado previamente
-//    c) Modal de configuración manual
-// ─────────────────────────────────────────────
-const LS_URL_KEY  = 'sb_url';
-const LS_KEY_KEY  = 'sb_key';
-
-function getCredenciales() {
-  // Intenta window.__env__ (si Vercel lo inyecta via script inline en el HTML)
-  var envUrl = (window.__env__ && window.__env__.SUPABASE_URL) ? window.__env__.SUPABASE_URL : '';
-  var envKey = (window.__env__ && window.__env__.SUPABASE_KEY) ? window.__env__.SUPABASE_KEY : '';
-
-  // Fallback a localStorage
-  var lsUrl = localStorage.getItem(LS_URL_KEY) || '';
-  var lsKey = localStorage.getItem(LS_KEY_KEY) || '';
-
-  return {
-    url: envUrl || lsUrl,
-    key: envKey || lsKey
-  };
-}
-
-function esURLValida(str) {
-  try { return str && str.startsWith('https://') && str.includes('.supabase.co'); }
-  catch(e) { return false; }
-}
-
-// ─────────────────────────────────────────────
-// 2. SUPABASE CLIENT
-// ─────────────────────────────────────────────
-var sbClient = null;
-
-function inicializarSupabase(url, key) {
-  try {
-    sbClient = window.supabase.createClient(url, key);
-    return true;
-  } catch(e) {
-    sbClient = null;
-    return false;
-  }
-}
-
-// ─────────────────────────────────────────────
-// 3. MODAL CREDENCIALES
-// ─────────────────────────────────────────────
-function abrirModalCreds() {
-  var creds = getCredenciales();
-  document.getElementById('credUrl').value = creds.url || '';
-  document.getElementById('credKey').value = creds.key || '';
-  document.getElementById('credError').style.display = 'none';
-  document.getElementById('modalCreds').style.display = 'flex';
-}
-
-function cerrarModalCreds() {
-  document.getElementById('modalCreds').style.display = 'none';
-}
-
-async function guardarCredenciales() {
-  var url = document.getElementById('credUrl').value.trim();
-  var key = document.getElementById('credKey').value.trim();
-
-  if (!url || !key) {
-    mostrarCredError('Completá ambos campos para continuar.');
-    return;
-  }
-  if (!esURLValida(url)) {
-    mostrarCredError('La URL no parece válida. Debe ser https://xxxx.supabase.co');
-    return;
-  }
-  if (key.length < 20) {
-    mostrarCredError('La Anon Key parece demasiado corta. Verificá que copiaste bien.');
-    return;
-  }
-
-  document.getElementById('credBtnText').textContent = 'Verificando...';
-  document.getElementById('credSpinner').style.display = 'inline-block';
-  document.getElementById('credError').style.display = 'none';
-
-  var ok = inicializarSupabase(url, key);
-  if (!ok) {
-    document.getElementById('credBtnText').textContent = 'Conectar y guardar';
-    document.getElementById('credSpinner').style.display = 'none';
-    mostrarCredError('No se pudo crear el cliente. Revisá las credenciales.');
-    return;
-  }
-
-  // Test real de conexión
-  try {
-    var resultado = await sbClient.from('movimientos_hogar').select('id').limit(1);
-    if (resultado.error) throw resultado.error;
-  } catch(e) {
-    document.getElementById('credBtnText').textContent = 'Conectar y guardar';
-    document.getElementById('credSpinner').style.display = 'none';
-    mostrarCredError('Error al conectar: ' + (e.message || e));
-    return;
-  }
-
-  // Todo OK → guardar en localStorage
-  localStorage.setItem(LS_URL_KEY, url);
-  localStorage.setItem(LS_KEY_KEY, key);
-
-  document.getElementById('credBtnText').textContent = 'Conectar y guardar';
-  document.getElementById('credSpinner').style.display = 'none';
-
-  cerrarModalCreds();
-  setStatus('Conectado a Supabase ✓', '#3fb950');
-  showToast('Conexión establecida y guardada ✓');
-  await cargarDatos();
-}
-
-function mostrarCredError(msg) {
-  document.getElementById('credErrorMsg').textContent = msg;
-  document.getElementById('credError').style.display = 'block';
-}
-
-// ─────────────────────────────────────────────
-// 4. ESTADO GLOBAL
-// ─────────────────────────────────────────────
-var allMovimientos = [];
-var allIngresos    = [];
-var chartActualInst = null;
-var chartFuturoInst = null;
-
-// ─────────────────────────────────────────────
-// 5. DATOS — CONCEPTOS
-// ─────────────────────────────────────────────
-var CONCEPTOS = {
-  'Casa':               ['Hipoteca','Seguro Hipoteca','Cuenta BNA','Expensas','Deuda 42,000 usd+cred','Pinturerias','Colchones','Reparaciones Casa','Otros...'],
-  'Comida':             ['Verduleria','Panaderia /pastas / Hel','Pescado','Mayorista','Supermercados','Fiambres','Frutos secos','Carne / pollo','Otros...'],
-  'Muebles/Equipos':    ['Electrodomesticos','Essen','Otros...'],
-  'Esparcimiento':      ['Delibery / Salidas /Helados','Vacaciones','Otros...'],
-  'Medicamentos':       ['Farmacias','Otros...'],
-  'Gasto animales':     ['Comida Mishi y NINA','Otros...'],
-  'Movilidad P':        ['Seguro Automovil','Combustible','Patente Auto','Neumaticos Calzzeta','Respuesto Auto','Autopista/estacionamiento','Otros...'],
-  'Movilidad NP':       ['Movilidad extra/sube','Otros...'],
-  'Servicio AV':        ['SpotiFy','Telecom','Otros...'],
-  'Servicios necesarios':['Gastos de Alpe','Edenor','Gas','ABL','Monotributo','Otros...'],
-  'Impuestos varios':   ['TC/Luz/Agua etc','Otros...'],
-  'Formaciones':        ['Capacitaciones','Otros...'],
-  'Inversiones/Publi':  ['Servicio inversiones','Insumos Pelo / cejas','Gastos tienda/ internet','Otros...'],
-  'Colegiatura':        ['Colegio Lola','Otros...'],
-  'Regalos':            ['Regalos','Otros...'],
-  'Bienestar':          ['Gimnasio/pileta','Gasto Profesionales','Otros...'],
-  'Ropa/calzados':      ['Zapatillas/botines','Ropa/vestimenta','Otros...'],
-  'Gastos extras':      ['Gastos extras Meli','Gastos extras Javi','Gastos extras Lola','Otros...']
-};
-
-var CONCEPTOS_INGRESO = {
-  'Ingresos Javi':     ['Salario','Alpe Ingenieria','Venta','Financiera de activos'],
-  'Ingresos Meli':     ['Salario','Venta','Financiera de activos'],
-  'Ingresos extras':   ['Venta','Financiera de activos','Otros'],
-  'Impuestos salario': ['Jubilación','Ganancias','O social']
-};
-
-// ─────────────────────────────────────────────
-// 6. UTILIDADES
-// ─────────────────────────────────────────────
-function fmt(n) {
-  return '$' + Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
-
-function fmtFecha(str) {
-  if (!str) return '';
-  var d = new Date(str + 'T12:00:00');
-  return d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' });
-}
-
-function showToast(msg, tipo) {
-  var t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast ' + (tipo || 'success') + ' show';
-  setTimeout(function() { t.className = 'toast'; }, 3200);
-}
-
-function setStatus(msg, color) {
-  var el = document.getElementById('statusBar');
-  el.textContent = msg;
-  el.style.color = color || '#8b949e';
-}
-
-function todayStr() {
-  return new Date().toISOString().split('T')[0];
-}
-
-function getFiltroDates() {
-  var filtro = document.getElementById('globalFilter').value;
-  var now = new Date();
-  var y = now.getFullYear();
-  var m = now.getMonth();
-  var desde, hasta;
-  if (filtro === 'mes_actual' || filtro === 'mes_proyectado') {
-    desde = new Date(y, m, 1);
-    hasta = new Date(y, m + 1, 0);
-  } else {
-    desde = new Date(y, 0, 1);
-    hasta = new Date(y, 11, 31);
-  }
-  return { desde: desde, hasta: hasta, filtro: filtro };
-}
-
-function enRango(fechaStr, desde, hasta) {
-  var d = new Date(fechaStr + 'T12:00:00');
-  return d >= desde && d <= hasta;
-}
-
-// ─────────────────────────────────────────────
-// 7. TABS
-// ─────────────────────────────────────────────
-function showTab(tab) {
-  var tabs = ['dashboard','gastos','ingresos','movimientos'];
-  tabs.forEach(function(t) {
-    document.getElementById('tab-' + t).style.display = (t === tab) ? '' : 'none';
-  });
-  document.querySelectorAll('.tab-btn').forEach(function(btn, i) {
-    btn.classList.toggle('active', tabs[i] === tab);
-  });
-  if (tab === 'dashboard' || tab === 'movimientos') renderAll();
-}
-
-// ─────────────────────────────────────────────
-// 8. CONCEPTOS DINÁMICOS
-// ─────────────────────────────────────────────
-function actualizarConceptos() {
-  var tipo = document.getElementById('g-tipo').value;
-  var sel  = document.getElementById('g-concepto');
-  document.getElementById('g-otros-wrap').style.display = 'none';
-  document.getElementById('g-otros-texto').value = '';
-
-  if (!tipo || !CONCEPTOS[tipo]) {
-    sel.innerHTML = '<option value="">Primero seleccionar tipo...</option>';
-    return;
-  }
-  sel.innerHTML = '<option value="">Seleccionar concepto...</option>';
-  CONCEPTOS[tipo].forEach(function(c) {
-    var o = document.createElement('option');
-    o.value = c; o.textContent = c;
-    sel.appendChild(o);
-  });
-}
-
-function checkOtros() {
-  var val = document.getElementById('g-concepto').value;
-  document.getElementById('g-otros-wrap').style.display = (val === 'Otros...') ? '' : 'none';
-  if (val !== 'Otros...') document.getElementById('g-otros-texto').value = '';
-}
-
-function actualizarConceptosIngreso() {
-  var cat = document.getElementById('i-categoria').value;
-  var sel = document.getElementById('i-concepto');
-  if (!cat || !CONCEPTOS_INGRESO[cat]) {
-    sel.innerHTML = '<option value="">Primero seleccionar categoría...</option>';
-    return;
-  }
-  sel.innerHTML = '<option value="">Seleccionar concepto...</option>';
-  CONCEPTOS_INGRESO[cat].forEach(function(c) {
-    var o = document.createElement('option');
-    o.value = c; o.textContent = c;
-    sel.appendChild(o);
-  });
-}
-
-// ─────────────────────────────────────────────
-// 9. GUARDAR GASTO
-// ─────────────────────────────────────────────
-async function guardarGasto() {
-  var fecha       = document.getElementById('g-fecha').value;
-  var fijo        = document.getElementById('g-fijo').value;
-  var necesario   = document.getElementById('g-necesario').value;
-  var tipo        = document.getElementById('g-tipo').value;
-  var conceptoSel = document.getElementById('g-concepto').value;
-  var otrosTexto  = document.getElementById('g-otros-texto').value.trim();
-  var montoPesos  = parseFloat(document.getElementById('g-monto-pesos').value) || 0;
-  var montoUSD    = parseFloat(document.getElementById('g-monto-usd').value)   || 0;
-  var estado      = document.getElementById('g-estado').value;
-  var concepto    = (conceptoSel === 'Otros...' && otrosTexto) ? otrosTexto : conceptoSel;
-
-  if (!fecha || !fijo || !necesario || !tipo || !conceptoSel || montoPesos <= 0) {
-    showToast('Completá todos los campos obligatorios', 'error'); return;
-  }
-  if (conceptoSel === 'Otros...' && !otrosTexto) {
-    showToast('Escribí el concepto en el campo "Otros"', 'error'); return;
-  }
-
-  var row = {
-    fecha: fecha,
-    tipo_movimiento: 'gasto',
-    fijo: fijo,
-    necesario: necesario,
-    tipo_gasto: tipo,
-    concepto: concepto,
-    monto_pesos: montoPesos,
-    monto_usd: montoUSD || null,
-    estado: estado
-  };
-
-  document.getElementById('btnGastoText').style.display  = 'none';
-  document.getElementById('btnGastoSpinner').style.display = 'inline-block';
-
-  try {
-    if (sbClient) {
-      var res = await sbClient.from('movimientos_hogar').insert([row]).select();
-      if (res.error) throw res.error;
-      if (res.data && res.data[0]) allMovimientos.unshift(res.data[0]);
-      else allMovimientos.unshift(Object.assign({ id: Date.now() }, row));
-    } else {
-      allMovimientos.unshift(Object.assign({ id: Date.now() }, row));
-    }
-    showToast('Gasto guardado ✓');
-    limpiarFormGasto();
-    renderAll();
-  } catch(e) {
-    showToast('Error: ' + e.message, 'error');
-  } finally {
-    document.getElementById('btnGastoText').style.display    = '';
-    document.getElementById('btnGastoSpinner').style.display = 'none';
-  }
-}
-
-// ─────────────────────────────────────────────
-// 10. GUARDAR INGRESO
-// ─────────────────────────────────────────────
-async function guardarIngreso() {
-  var fecha     = document.getElementById('i-fecha').value;
-  var categoria = document.getElementById('i-categoria').value;
-  var concepto  = document.getElementById('i-concepto').value;
-  var monto     = parseFloat(document.getElementById('i-monto').value) || 0;
-
-  if (!fecha || !categoria || !concepto || monto <= 0) {
-    showToast('Completá todos los campos', 'error'); return;
-  }
-
-  var row = {
-    fecha: fecha,
-    tipo_movimiento: 'ingreso',
-    categoria_ingreso: categoria,
-    concepto: concepto,
-    monto_pesos: monto
-  };
-
-  document.getElementById('btnIngresoText').style.display    = 'none';
-  document.getElementById('btnIngresoSpinner').style.display = 'inline-block';
-
-  try {
-    if (sbClient) {
-      var res = await sbClient.from('movimientos_hogar').insert([row]).select();
-      if (res.error) throw res.error;
-      if (res.data && res.data[0]) allIngresos.unshift(res.data[0]);
-      else allIngresos.unshift(Object.assign({ id: Date.now() }, row));
-    } else {
-      allIngresos.unshift(Object.assign({ id: Date.now() }, row));
-    }
-    showToast('Ingreso guardado ✓');
-    limpiarFormIngreso();
-    renderAll();
-  } catch(e) {
-    showToast('Error: ' + e.message, 'error');
-  } finally {
-    document.getElementById('btnIngresoText').style.display    = '';
-    document.getElementById('btnIngresoSpinner').style.display = 'none';
-  }
-}
-
-// ─────────────────────────────────────────────
-// 11. LIMPIAR FORMULARIOS
-// ─────────────────────────────────────────────
-function limpiarFormGasto() {
-  ['g-fijo','g-necesario','g-tipo','g-monto-pesos','g-monto-usd'].forEach(function(id) {
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('g-fecha').value  = todayStr();
-  document.getElementById('g-estado').value = 'ejecutado';
-  document.getElementById('g-concepto').innerHTML = '<option value="">Primero seleccionar tipo...</option>';
-  document.getElementById('g-otros-wrap').style.display = 'none';
-  document.getElementById('g-otros-texto').value = '';
-}
-
-function limpiarFormIngreso() {
-  ['i-categoria','i-monto'].forEach(function(id) {
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('i-fecha').value   = todayStr();
-  document.getElementById('i-concepto').innerHTML = '<option value="">Primero seleccionar categoría...</option>';
-}
-
-// ─────────────────────────────────────────────
-// 12. ELIMINAR
-// ─────────────────────────────────────────────
-async function eliminarMovimiento(id, tipo) {
-  if (!confirm('¿Eliminar este movimiento?')) return;
-  try {
-    if (sbClient) {
-      var res = await sbClient.from('movimientos_hogar').delete().eq('id', id);
-      if (res.error) throw res.error;
-    }
-    if (tipo === 'ingreso') {
-      allIngresos = allIngresos.filter(function(r) { return r.id !== id; });
-    } else {
-      allMovimientos = allMovimientos.filter(function(r) { return r.id !== id; });
-    }
-    showToast('Eliminado');
-    renderAll();
-  } catch(e) {
-    showToast('Error: ' + e.message, 'error');
-  }
-}
-
-// ─────────────────────────────────────────────
-// 13. CARGAR DATOS DESDE SUPABASE
-// ─────────────────────────────────────────────
-async function cargarDatos() {
-  if (!sbClient) { renderAll(); return; }
-  setStatus('Cargando datos...', '#8b949e');
-  try {
-    var res = await sbClient
-      .from('movimientos_hogar')
-      .select('*')
-      .order('fecha', { ascending: false });
-    if (res.error) throw res.error;
-    var data = res.data || [];
-    allMovimientos = data.filter(function(r) { return r.tipo_movimiento === 'gasto'; });
-    allIngresos    = data.filter(function(r) { return r.tipo_movimiento === 'ingreso'; });
-    setStatus('Conectado · ' + data.length + ' registros', '#3fb950');
-    renderAll();
-  } catch(e) {
-    setStatus('Error al cargar datos', '#f85149');
-    showToast('Error cargando datos: ' + e.message, 'error');
-  }
-}
-
-// ─────────────────────────────────────────────
-// 14. RENDER ALL
-// ─────────────────────────────────────────────
-function renderAll() {
-  var fd = getFiltroDates();
-  var desde = fd.desde, hasta = fd.hasta, filtro = fd.filtro;
-
-  var gastosFiltrados  = allMovimientos.filter(function(r) { return enRango(r.fecha, desde, hasta); });
-  var ingresosFiltrados = allIngresos.filter(function(r)   { return enRango(r.fecha, desde, hasta); });
-
-  var ejecutados  = gastosFiltrados.filter(function(r) { return r.estado === 'ejecutado' || !r.estado; });
-  var proyectados = gastosFiltrados.filter(function(r) { return r.estado === 'proyectado'; });
-
-  var inflacion        = parseFloat(document.getElementById('inflacionEstimada').value) || 0;
-  var cuotaUVABase     = parseFloat(document.getElementById('cuotaUVABase').value)      || 0;
-  var deudaAlej        = parseFloat(document.getElementById('deudaAlejandro').value)    || 0;
-  var cuotaUVAProyect  = cuotaUVABase * (1 + inflacion / 100);
-
-  var totalEjecutado       = ejecutados.reduce(function(s,r) { return s + (r.monto_pesos||0); }, 0);
-  var totalProyectManual   = proyectados.reduce(function(s,r){ return s + (r.monto_pesos||0); }, 0);
-  var gastosAuto           = cuotaUVAProyect + deudaAlej;
-  var totalProyectado      = totalProyectManual + gastosAuto;
-
-  var totalGastos  = (filtro === 'mes_proyectado') ? (totalEjecutado + totalProyectado) : totalEjecutado;
-  var totalIngresos = ingresosFiltrados.reduce(function(s,r) { return s + (r.monto_pesos||0); }, 0);
-
-  var impuestos = ingresosFiltrados
-    .filter(function(r) { return r.categoria_ingreso === 'Impuestos salario'; })
-    .reduce(function(s,r) { return s + (r.monto_pesos||0); }, 0);
-
-  var salarioNeto = totalIngresos - impuestos;
-  var ahorro      = totalIngresos - totalGastos;
-  var ahorroPct   = totalIngresos > 0 ? ((ahorro / totalIngresos) * 100).toFixed(1) : 0;
-  var noNecesario = ejecutados
-    .filter(function(r) { return r.necesario === 'No necesario'; })
-    .reduce(function(s,r) { return s + (r.monto_pesos||0); }, 0);
-
-  document.getElementById('cardIngresos').textContent = fmt(totalIngresos);
-  document.getElementById('cardGastos').textContent   = fmt(totalGastos);
-  var cardAhorro = document.getElementById('cardAhorro');
-  cardAhorro.textContent = fmt(ahorro);
-  cardAhorro.className = 'text-xl font-bold font-mono ' + (ahorro >= 0 ? 'text-green-400' : 'text-red-400');
-  document.getElementById('cardAhorroPct').textContent = ahorroPct + '% del ingreso';
-  document.getElementById('cardSalario').textContent   = fmt(salarioNeto);
-  document.getElementById('cardNoNec').textContent     = fmt(noNecesario);
-
-  // Compromisos automáticos
-  var lauto = document.getElementById('listaCompromisosAuto');
-  if (cuotaUVABase > 0 || deudaAlej > 0) {
-    var html = '';
-    if (cuotaUVABase > 0) html += '<div class="flex justify-between"><span>Cuota UVA (+' + inflacion + '%)</span><span class="font-mono" style="color:#79c0ff;">' + fmt(cuotaUVAProyect) + '</span></div>';
-    if (deudaAlej > 0)    html += '<div class="flex justify-between"><span>Deuda Alejandro (400 USD)</span><span class="font-mono" style="color:#79c0ff;">' + fmt(deudaAlej) + '</span></div>';
-    lauto.innerHTML = html;
-  } else {
-    lauto.innerHTML = '<p class="text-gray-500">Configura en Dashboard para ver proyección</p>';
-  }
-
-  renderLista('listaEjecutados',  ejecutados,        'gasto');
-  renderLista('listaProyectados', proyectados,       'gasto');
-  renderLista('listaIngresos',    ingresosFiltrados, 'ingreso');
-
-  document.getElementById('countEjecutados').textContent  = ejecutados.length;
-  document.getElementById('countProyectados').textContent = proyectados.length;
-  document.getElementById('countIngresos').textContent    = ingresosFiltrados.length;
-
-  renderCharts(ejecutados, proyectados, cuotaUVAProyect, deudaAlej);
-}
-
-// ─────────────────────────────────────────────
-// 15. RENDER LISTA
-// ─────────────────────────────────────────────
-function renderLista(containerId, items, tipo) {
-  var el = document.getElementById(containerId);
-  if (!items || items.length === 0) {
-    el.innerHTML = '<p class="text-gray-500 text-sm text-center py-6">Sin datos para este período</p>';
-    return;
-  }
-  el.innerHTML = items.map(function(r) {
-    var esIngreso  = (tipo === 'ingreso');
-    var concepto   = r.concepto || '—';
-    var categoria  = esIngreso ? (r.categoria_ingreso || '') : (r.tipo_gasto || '');
-    var pillClass  = esIngreso ? 'pill-green' : (r.necesario === 'No necesario' ? 'pill-yellow' : 'pill-blue');
-    var montoColor = esIngreso ? 'color:#3fb950' : 'color:#f85149';
-    var signo      = esIngreso ? '+' : '-';
-    var fijoTag    = (!esIngreso && r.fijo) ? '<span class="pill" style="background:#8b949e22;color:#8b949e;">' + r.fijo + '</span>' : '';
-    return '<div class="flex items-start gap-2 p-2 rounded-lg" style="background:#21262d18;border:1px solid #30363d20;margin-bottom:4px;">'
-      + '<div style="flex:1;min-width:0;">'
-      +   '<div class="flex items-center gap-2 flex-wrap">'
-      +     '<span class="text-xs font-mono" style="color:#8b949e;">' + fmtFecha(r.fecha) + '</span>'
-      +     '<span class="pill ' + pillClass + '" style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + categoria + '</span>'
-      +     fijoTag
-      +   '</div>'
-      +   '<p style="font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + concepto + '</p>'
-      + '</div>'
-      + '<div style="text-align:right;flex-shrink:0;">'
-      +   '<p class="font-mono font-bold" style="font-size:13px;' + montoColor + '">' + signo + fmt(r.monto_pesos) + '</p>'
-      +   (r.monto_usd ? '<p style="font-size:11px;color:#8b949e;font-family:monospace;">USD ' + r.monto_usd + '</p>' : '')
-      +   '<button class="btn-danger" style="margin-top:4px;" onclick="eliminarMovimiento(' + r.id + ', \'' + tipo + '\')">✕</button>'
-      + '</div>'
-      + '</div>';
-  }).join('');
-}
-
-// ─────────────────────────────────────────────
-// 16. GRÁFICOS
-// ─────────────────────────────────────────────
-var CHART_COLORS = [
-  '#58a6ff','#3fb950','#f85149','#d29922','#bc8cff',
-  '#ff7b72','#79c0ff','#56d364','#ffa657','#e3b341',
-  '#89d4f5','#ff9492','#b392f0','#7ee787','#ffdcd7'
-];
-
-function renderCharts(ejecutados, proyectados, cuotaUVA, deudaAlej) {
-  var grupoActual = {};
-  ejecutados.forEach(function(r) {
-    var k = r.tipo_gasto || 'Otros';
-    grupoActual[k] = (grupoActual[k] || 0) + (r.monto_pesos || 0);
-  });
-
-  var grupoFuturo = {};
-  Object.keys(grupoActual).forEach(function(k) { grupoFuturo[k] = grupoActual[k]; });
-  proyectados.forEach(function(r) {
-    var k = r.tipo_gasto || 'Otros';
-    grupoFuturo[k] = (grupoFuturo[k] || 0) + (r.monto_pesos || 0);
-  });
-  if (cuotaUVA   > 0) grupoFuturo['Casa'] = (grupoFuturo['Casa'] || 0) + cuotaUVA;
-  if (deudaAlej  > 0) grupoFuturo['Casa'] = (grupoFuturo['Casa'] || 0) + deudaAlej;
-
-  buildDonut('chartActual', 'chartActualEmpty', grupoActual, 'chartActualInst');
-  buildDonut('chartFuturo', 'chartFuturoEmpty', grupoFuturo, 'chartFuturoInst');
-}
-
-function buildDonut(canvasId, emptyId, data, instKey) {
-  var canvas  = document.getElementById(canvasId);
-  var emptyEl = document.getElementById(emptyId);
-  var keys    = Object.keys(data).filter(function(k) { return data[k] > 0; });
-
-  if (keys.length === 0) {
-    canvas.style.display  = 'none';
-    emptyEl.style.display = '';
-    return;
-  }
-  canvas.style.display  = '';
-  emptyEl.style.display = 'none';
-
-  if (instKey === 'chartActualInst' && chartActualInst) { chartActualInst.destroy(); chartActualInst = null; }
-  if (instKey === 'chartFuturoInst' && chartFuturoInst) { chartFuturoInst.destroy(); chartFuturoInst = null; }
-
-  var values = keys.map(function(k) { return data[k]; });
-  var total  = values.reduce(function(a,b) { return a+b; }, 0);
-
-  var inst = new Chart(canvas, {
-    type: 'doughnut',
-    data: {
-      labels: keys,
-      datasets: [{
-        data: values,
-        backgroundColor: CHART_COLORS.slice(0, keys.length),
-        borderColor: '#161b22',
-        borderWidth: 2,
-        hoverOffset: 8
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { color: '#8b949e', font: { size: 11 }, padding: 10, boxWidth: 12 }
-        },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              var val = ctx.parsed;
-              var pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
-              return ' ' + ctx.label + ': ' + fmt(val) + ' (' + pct + '%)';
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contabilidad del Hogar</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome para íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0f172a',
+                        darkCard: '#1e293b'
+                    }
+                }
             }
-          }
         }
-      }
-    }
-  });
+    </script>
+    <style>
+        /* Estilos para ocultar scrollbars estéticos */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-darkBg text-slate-100 min-h-screen font-sans antialiased">
 
-  if (instKey === 'chartActualInst') chartActualInst = inst;
-  else chartFuturoInst = inst;
-}
+    <!-- MODAL DE CONFIGURACIÓN DE CREDENCIALES -->
+    <div id="modal-conexion" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-darkCard p-6 rounded-2xl max-w-md w-full border border-slate-700 shadow-2xl">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
+                    <i class="fa-solid fa-key text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold">Configurar conexión</h3>
+                    <p class="text-xs text-slate-400">Se guarda de forma local en este dispositivo</p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-300 bg-slate-900 p-3 rounded-lg mb-4 border border-slate-800">
+                Encontrás estos datos en tu proyecto de Supabase &rarr; <span class="text-amber-400 font-mono">Settings &rarr; API</span>.
+            </p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-slate-400">Supabase URL *</label>
+                    <input type="text" id="setup-url" placeholder="https://xxxx.supabase.co" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1 text-slate-400">Anon Key / Clave Pública *</label>
+                    <input type="password" id="setup-key" placeholder="eyJhbGciOi..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                </div>
+                <div id="setup-error" class="text-xs text-red-400 bg-red-500/10 p-3 rounded-xl hidden border border-red-500/20"></div>
+                <button onclick="guardarConfiguracionManual()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold text-sm transition-colors shadow-lg shadow-blue-600/20">
+                    Conectar y guardar
+                </button>
+            </div>
+        </div>
+    </div>
 
-// ─────────────────────────────────────────────
-// 17. RECALCULAR
-// ─────────────────────────────────────────────
-function recalcular() { renderAll(); showToast('Proyección recalculada'); }
+    <!-- HEADER / BARRA SUPERIOR -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-40 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🏡</span>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-tight">Contabilidad del Hogar</h1>
+                        <div class="flex items-center gap-1.5 text-xs text-slate-400">
+                            <span id="status-dot" class="w-2 h-2 rounded-full bg-gray-500"></span>
+                            <span id="status-text">Detectando conexión...</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('modal-conexion').classList.remove('hidden')" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors text-slate-400 hover:text-slate-200" title="Configurar Credenciales">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+            
+            <!-- FILTRO TEMPORAL GLOBAL -->
+            <div class="flex items-center gap-2 w-full sm:w-auto bg-slate-800 p-1 rounded-xl border border-slate-700">
+                <label class="text-xs text-slate-400 pl-2 font-medium hidden md:inline">Vista:</label>
+                <select id="filtro-temporal" onchange="cargarTodo()" class="bg-transparent text-sm font-semibold focus:outline-none pr-8 pl-2 py-1 cursor-pointer text-slate-200">
+                    <option value="actual" class="bg-slate-800 text-slate-200">📅 Mes Actual</option>
+                    <option value="proyectado" class="bg-slate-800 text-slate-200">🔮 Mes Proyectado</option>
+                    <option value="anual" class="bg-slate-800 text-slate-200">📊 Acumulado Anual</option>
+                </select>
+            </div>
+        </div>
+    </header>
 
-// ─────────────────────────────────────────────
-// 18. EVENTO FILTRO GLOBAL
-// ─────────────────────────────────────────────
-document.getElementById('globalFilter').addEventListener('change', renderAll);
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main class="max-w-7xl mx-auto p-4 space-y-6">
 
-// ─────────────────────────────────────────────
-// 19. ARRANQUE
-// ─────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', async function() {
-  document.getElementById('g-fecha').value = todayStr();
-  document.getElementById('i-fecha').value = todayStr();
+        <!-- TARJETAS INDICADORAS (DASHBOARD) -->
+        <section class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
+                <p class="text-xs font-semibold text-slate-400 mb-1">Ingresos Totales</p>
+                <h3 id="card-ingresos" class="text-xl sm:text-2xl font-black text-emerald-400">$0</h3>
+            </div>
+            <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
+                <p class="text-xs font-semibold text-slate-400 mb-1">Gastos Totales</p>
+                <h3 id="card-gastos" class="text-xl sm:text-2xl font-black text-rose-400">$0</h3>
+            </div>
+            <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
+                <p class="text-xs font-semibold text-slate-400 mb-1">Ahorro Neto</p>
+                <h3 id="card-ahorro" class="text-xl sm:text-2xl font-black text-blue-400">$0</h3>
+                <p id="card-ahorro-pct" class="text-[10px] text-slate-400 mt-0.5">0% del ingreso</p>
+            </div>
+            <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
+                <p class="text-xs font-semibold text-slate-400 mb-1">Salario Neto</p>
+                <h3 id="card-salario-neto" class="text-xl sm:text-2xl font-black text-cyan-400">$0</h3>
+            </div>
+            <div class="bg-darkCard p-4 rounded-2xl border border-slate-800 col-span-2 lg:col-span-1">
+                <p class="text-xs font-semibold text-slate-400 mb-1">⚠️ Gasto No Nec.</p>
+                <h3 id="card-no-necesario" class="text-xl sm:text-2xl font-black text-amber-400">$0</h3>
+            </div>
+        </section>
 
-  var creds = getCredenciales();
+        <!-- MENU DE NAVEGACIÓN LOCAL -->
+        <div class="flex gap-2 border-b border-slate-800 pb-px overflow-x-auto no-scrollbar">
+            <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="tab-btn px-4 py-2 text-sm font-bold rounded-t-xl bg-blue-600 text-white transition-all flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-chart-pie"></i> Dashboard
+            </button>
+            <button onclick="switchTab('tab-gasto')" id="btn-tab-gasto" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 rounded-t-xl transition-all flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-money-bill-wave"></i> Cargar Gasto
+            </button>
+            <button onclick="switchTab('tab-ingreso')" id="btn-tab-ingreso" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 rounded-t-xl transition-all flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-wallet"></i> Cargar Ingreso
+            </button>
+            <button onclick="switchTab('tab-movimientos')" id="btn-tab-movimientos" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 rounded-t-xl transition-all flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-list"></i> Movimientos
+            </button>
+        </div>
 
-  if (creds.url && creds.key) {
-    // Tenemos credenciales guardadas o inyectadas → intentar conectar
-    setStatus('Conectando...', '#8b949e');
-    var ok = inicializarSupabase(creds.url, creds.key);
-    if (ok) {
-      try {
-        var res = await sbClient.from('movimientos_hogar').select('id').limit(1);
-        if (res.error) throw res.error;
-        setStatus('Conectado a Supabase ✓', '#3fb950');
-        await cargarDatos();
-      } catch(e) {
-        // Credenciales guardadas pero fallan → pedir de nuevo
-        setStatus('Credenciales inválidas', '#f85149');
-        abrirModalCreds();
-      }
-    } else {
-      abrirModalCreds();
-    }
-  } else {
-    // Sin credenciales → mostrar modal de configuración
-    setStatus('Sin configurar', '#d29922');
-    abrirModalCreds();
-  }
-});
-</script>
+        <!-- SECCIONES / PESTAÑAS -->
+        
+        <!-- PESTAÑA 1: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-darkCard p-4 rounded-2xl border border-slate-800 flex flex-col items-center">
+                    <h4 class="text-sm font-bold text-slate-300 self-start mb-4">🔮 Distribución de Gastos</h4>
+                    <div class="w-full max-w-[280px] sm:max-w-[320px]">
+                        <canvas id="chartGastos"></canvas>
+                    </div>
+                </div>
+                <div class="bg-darkCard p-4 rounded-2xl border border-slate-800 flex flex-col justify-center">
+                    <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Resumen Operativo</h4>
+                    <div class="space-y-4 text-sm" id="resumen-texto-dashboard">
+                        <!-- Se llena dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 2: CARGAR GASTO -->
+        <div id="tab-gasto" class="tab-content hidden">
+            <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 max-w-3xl mx-auto">
+                <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-rose-400">
+                    <i class="fa-solid fa-money-bill-transfer"></i> Nuevo Gasto
+                </h3>
+                <form id="form-gasto" onsubmit="guardarGasto(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Fecha *</label>
+                        <input type="date" id="gasto-fecha" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Fijo / Variable *</label>
+                        <select id="gasto-fijo-variable" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="">Seleccionar...</option>
+                            <option value="FIJO">FIJO</option>
+                            <option value="VARIABLE">VARIABLE</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Gasto Necesario *</label>
+                        <select id="gasto-necesario" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="">Seleccionar...</option>
+                            <option value="Necesario">Necesario</option>
+                            <option value="No necesario">No necesario</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Tipo de Gasto *</label>
+                        <select id="gasto-tipo" required onchange="actualizarConceptosGasto()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="">Seleccionar tipo...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Concepto *</label>
+                        <select id="gasto-concepto" required onchange="chequearConceptoOtros(this, 'gasto-otros-container')" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="">Primero seleccionar tipo...</option>
+                        </select>
+                    </div>
+                    <div id="gasto-otros-container" class="hidden">
+                        <label class="block text-xs font-semibold mb-1 text-amber-400">Especificar Concepto *</label>
+                        <input type="text" id="gasto-concepto-otros" class="w-full bg-slate-900 border border-amber-600/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-amber-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Monto en Pesos ($) *</label>
+                        <input type="number" id="gasto-monto-pesos" step="0.01" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Monto en USD (opcional)</label>
+                        <input type="number" id="gasto-monto-usd" step="0.01" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Estado Financiero *</label>
+                        <select id="gasto-estado-virtual" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="Ejecutado">Ejecutado (pagado ya)</option>
+                            <option value="Proyectado">Proyectado (vencimiento/compromiso futuro)</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Nota / Comentario</label>
+                        <input type="text" id="gasto-nota" placeholder="Detalles extra del gasto..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="sm:col-span-3 flex gap-3 mt-2">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-600/10 flex items-center gap-2">
+                            <i class="fa-solid fa-floppy-disk"></i> Guardar Gasto
+                        </button>
+                        <button type="button" onclick="document.getElementById('form-gasto').reset(); document.getElementById('gasto-otros-container').classList.add('hidden');" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all">
+                            Limpiar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 3: CARGAR INGRESO -->
+        <div id="tab-ingreso" class="tab-content hidden">
+            <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 max-w-3xl mx-auto">
+                <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-emerald-400">
+                    <i class="fa-solid fa-wallet"></i> Nuevo Ingreso
+                </h3>
+                <form id="form-ingreso" onsubmit="guardarIngreso(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Fecha *</label>
+                        <input type="date" id="ingreso-fecha" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Categoría *</label>
+                        <select id="ingreso-categoria" required onchange="actualizarConceptosIngreso()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="">Seleccionar...</option>
+                            <option value="Ingresos Javi">Ingresos Javi</option>
+                            <option value="Ingresos Meli">Ingresos Meli</option>
+                            <option value="Ingresos extras">Ingresos extras</option>
+                            <option value="Impuestos salario">Impuestos salario</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Concepto *</label>
+                        <select id="ingreso-concepto" required onchange="chequearConceptoOtros(this, 'ingreso-otros-container')" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="">Seleccionar categoría primero...</option>
+                        </select>
+                    </div>
+                    <div id="ingreso-otros-container" class="hidden">
+                        <label class="block text-xs font-semibold mb-1 text-amber-400">Especificar Concepto *</label>
+                        <input type="text" id="ingreso-concepto-otros" class="w-full bg-slate-900 border border-amber-600/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-amber-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Monto en Pesos ($) *</label>
+                        <input type="number" id="ingreso-monto-pesos" step="0.01" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Nota / Comentario</label>
+                        <input type="text" id="ingreso-nota" placeholder="Detalle opcional..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="sm:col-span-2 flex gap-3 mt-2">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-600/10 flex items-center gap-2">
+                            <i class="fa-solid fa-floppy-disk"></i> Guardar Ingreso
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 4: LISTADO DE MOVIMIENTOS COMPLETO (SISTEMA DE COLUMNAS ACTUAL VS FUTURO) -->
+        <div id="tab-movimientos" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- COLUMNA IZQUIERDA: EJECUTADOS -->
+                <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
+                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos Actuales / Ejecutados
+                    </h3>
+                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto pr-1" id="lista-ejecutados">
+                        <!-- Carga dinámica -->
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: PROYECTADOS -->
+                <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
+                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Gastos Proyectados / Futuros
+                    </h3>
+                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto pr-1" id="lista-proyectados">
+                        <!-- Carga dinámica -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- LOGICA JAVASCRIPT INTEGRADA -->
+    <script>
+        // CONFIGURACIÓN DE TU MATRIZ DINÁMICA
+        const matrizConceptos = {
+            "Casa": ["Hipoteca", "Seguro Hipoteca", "Cuenta BNA", "Expensas", "Deuda 42,000 usd+cred", "Pinturerias", "Colchones", "Reparaciones Casa"],
+            "Comida": ["Verduleria", "Panaderia /pastas / Hel", "Pescado", "Mayorista", "Supermercados", "Fiambres", "Frutos secos", "Carne / pollo"],
+            "Muebles/Equipos": ["Electrodomesticos", "Essen"],
+            "Esparcimiento": ["Delibery / Salidas /Helados", "Vacaciones"],
+            "Medicamentos": ["Farmacias"],
+            "Gasto animales": ["Comida Mishi y NINA"],
+            "Movilidad P": ["Seguro Automovil", "Combustible", "Patente Auto", "Neumaticos Calzzeta", "Respuesto Auto", "Autopista/estacionamiento"],
+            "Movilidad NP": ["Movilidad extra/sube"],
+            "Servicio AV": ["SpotiFy", "Telecom"],
+            "Servicios necesarios": ["Gastos de Alpe", "Edenor", "Gas", "ABL", "Monotributo"],
+            "Impuestos varios": ["TC/Luz/Agua etc."],
+            "Formaciones": ["Capacitaciones"],
+            "Inversiones/Publi": ["Servicio inversiones", "Insumos Pelo / cejas", "Gastos tienda/ internet"],
+            "Colegiatura": ["Colegio Lola"],
+            "Regalos": ["Regalos"],
+            "Bienestar": ["Gimnasio/pileta", "Gasto Profesionales"],
+            "Ropa/calzados": ["Zapatillas/botines", "Ropa/vestimenta"],
+            "Gastos extras": ["Gastos extras Meli", "Gastos extras Javi", "Gastos extras Lola"]
+        };
+
+        const matrizIngresos = {
+            "Ingresos Javi": ["Salario", "Alpe Ingenieria", "Venta", "Financiera de activos"],
+            "Ingresos Meli": ["Salario", "Venta"],
+            "Ingresos extras": ["Ganancias"],
+            "Impuestos salario": ["Jubilación", "Ganancias", "O social"]
+        };
+
+        // VARIABLES GLOBALES DE CONEXIÓN
+        let SB_URL = "";
+        let SB_KEY = "";
+        let globalMovimientos = [];
+        let chartInstance = null;
+
+        // INICIALIZACIÓN
+        document.addEventListener("DOMContentLoaded", () => {
+            // Setea fecha de hoy en los formularios
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('gasto-fecha').value = hoy;
+            document.getElementById('ingreso-fecha').value = hoy;
+
+            // Renderiza los selectores iniciales
+            const tGastoSelect = document.getElementById('gasto-tipo');
+            Object.keys(matrizConceptos).forEach(cat => {
+                let op = document.createElement('option');
+                op.value = cat; op.textContent = cat;
+                tGastoSelect.appendChild(op);
+            });
+
+            intentarConexionAutomatica();
+        });
+
+        function intentarConexionAutomatica() {
+            // Plan A: Busca en LocalStorage para no perder persistencia
+            const cachedUrl = localStorage.getItem("hogar_sb_url");
+            const cachedKey = localStorage.getItem("hogar_sb_key");
+
+            if (cachedUrl && cachedKey) {
+                SB_URL = cachedUrl;
+                SB_KEY = cachedKey;
+                verificarConexionReal();
+            } else {
+                // Si no hay nada guardado, abre la carga obligatoria por primera vez
+                document.getElementById('modal-conexion').classList.remove('hidden');
+            }
+        }
+
+        async function verificarConexionReal() {
+            actualizarIndicadorStatus("bg-amber-500", "Validando base...");
+            try {
+                // Hacemos una consulta liviana para chequear que la tabla exista
+                const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar?limit=1`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': SB_KEY,
+                        'Authorization': `Bearer ${SB_KEY}`
+                    }
+                });
+
+                if (!res.ok) throw new Error("Error en respuesta de base de datos");
+
+                actualizarIndicadorStatus("bg-emerald-500", "Conectado");
+                document.getElementById('modal-conexion').classList.add('hidden');
+                cargarTodo();
+            } catch (err) {
+                console.error(err);
+                actualizarIndicadorStatus("bg-rose-500", "Error de tabla");
+                document.getElementById('setup-error').textContent = "Error al conectar: Verifica que la URL/Key sean las correctas y que la tabla 'movimientos_hogar' esté creada.";
+                document.getElementById('setup-error').classList.remove('hidden');
+                document.getElementById('modal-conexion').classList.remove('hidden');
+            }
+        }
+
+        function guardarConfiguracionManual() {
+            const urlInput = document.getElementById('setup-url').value.trim();
+            const keyInput = document.getElementById('setup-key').value.trim();
+
+            if (!urlInput || !keyInput) {
+                alert("Por favor completa todos los campos.");
+                return;
+            }
+
+            localStorage.setItem("hogar_sb_url", urlInput);
+            localStorage.setItem("hogar_sb_key", keyInput);
+            SB_URL = urlInput;
+            SB_KEY = keyInput;
+            
+            document.getElementById('setup-error').classList.add('hidden');
+            verificarConexionReal();
+        }
+
+        function actualizarIndicadorStatus(colorClass, text) {
+            const dot = document.getElementById('status-dot');
+            const txt = document.getElementById('status-text');
+            dot.className = `w-2 h-2 rounded-full ${colorClass}`;
+            txt.textContent = text;
+        }
+
+        // CONTROLADORES DE RENDERIZACIÓN DE SELECTORES DINÁMICOS
+        function actualizarConceptosGasto() {
+            const tipo = document.getElementById('gasto-tipo').value;
+            const conceptoSelect = document.getElementById('gasto-concepto');
+            conceptoSelect.innerHTML = '<option value="">Seleccionar concepto...</option>';
+            document.getElementById('gasto-otros-container').classList.add('hidden');
+
+            if (matrizConceptos[tipo]) {
+                matrizConceptos[tipo].forEach(c => {
+                    let op = document.createElement('option');
+                    op.value = c; op.textContent = c;
+                    conceptoSelect.appendChild(op);
+                });
+                let opOtros = document.createElement('option');
+                opOtros.value = "Otros..."; opOtros.textContent = "Otros...";
+                conceptoSelect.appendChild(opOtros);
+            }
+        }
+
+        function actualizarConceptosIngreso() {
+            const cat = document.getElementById('ingreso-categoria').value;
+            const compSelect = document.getElementById('ingreso-concepto');
+            compSelect.innerHTML = '<option value="">Seleccionar concepto...</option>';
+            document.getElementById('ingreso-otros-container').classList.add('hidden');
+
+            if (matrizIngresos[cat]) {
+                matrizIngresos[cat].forEach(c => {
+                    let op = document.createElement('option');
+                    op.value = c; op.textContent = c;
+                    compSelect.appendChild(op);
+                });
+                let opOtros = document.createElement('option');
+                opOtros.value = "Otros..."; opOtros.textContent = "Otros...";
+                compSelect.appendChild(opOtros);
+            }
+        }
+
+        function chequearConceptoOtros(selectElem, containerId) {
+            const container = document.getElementById(containerId);
+            if (selectElem.value === "Otros...") {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        // PETICIONES API A SUPABASE (GET / INSERT)
+        async function cargarTodo() {
+            if (!SB_URL) return;
+            try {
+                const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar?order=fecha.desc`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': SB_KEY,
+                        'Authorization': `Bearer ${SB_KEY}`
+                    }
+                });
+                if (!res.ok) throw new Error("Error recuperando registros");
+                globalMovimientos = await res.json();
+                
+                document.getElementById('status-text').textContent = `Conectado · ${globalMovimientos.length} registros`;
+                
+                procesarYRenderizarTableros();
+            } catch (err) {
+                console.error(err);
+                actualizarIndicadorStatus("bg-rose-500", "Error de sincronización");
+            }
+        }
+
+        async function guardarGasto(e) {
+            e.preventDefault();
+            
+            let conceptoFinal = document.getElementById('gasto-concepto').value;
+            if (conceptoFinal === "Otros...") {
+                conceptoFinal = document.getElementById('gasto-concepto-otros').value.trim() || "Otros";
+            }
+
+            // LEEMOS EL ESTADO (EJECUTADO O PROYECTADO)
+            const estadoVirtual = document.getElementById('gasto-estado-virtual').value;
+            
+            // CONSTRUCCIÓN DE LA NOTA INTELIGENTE (BURLANDO LA COLUMNA FÍSICA FALTANTE)
+            let notaOriginal = document.getElementById('gasto-nota').value.trim();
+            let notaFinal = notaOriginal ? `${notaOriginal} [FINAN: ${estadoVirtual}]` : `[FINAN: ${estadoVirtual}]`;
+
+            const payload = {
+                fecha: document.getElementById('gasto-fecha').value,
+                tipo_movimiento: "Gasto",
+                fijo_variable: document.getElementById('gasto-fijo-variable').value,
+                gasto_necesario: document.getElementById('gasto-necesario').value,
+                tipo_gasto: document.getElementById('gasto-tipo').value,
+                concepto: conceptoFinal,
+                monto_pesos: parseFloat(document.getElementById('gasto-monto-pesos').value),
+                monto_usd: parseFloat(document.getElementById('gasto-monto-usd').value) || 0,
+                nota: notaFinal
+            };
+
+            try {
+                const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SB_KEY,
+                        'Authorization': `Bearer ${SB_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) throw new Error("Error en el guardado de datos");
+
+                alert("Gasto registrado de forma impecable.");
+                document.getElementById('form-gasto').reset();
+                document.getElementById('gasto-otros-container').classList.add('hidden');
+                switchTab('tab-dashboard');
+                cargarTodo();
+            } catch (err) {
+                alert("Ocurrió un error al guardar: " + err.message);
+            }
+        }
+
+        async function guardarIngreso(e) {
+            e.preventDefault();
+
+            let conceptoFinal = document.getElementById('ingreso-concepto').value;
+            if (conceptoFinal === "Otros...") {
+                conceptoFinal = document.getElementById('ingreso-concepto-otros').value.trim() || "Otros";
+            }
+
+            const payload = {
+                fecha: document.getElementById('ingreso-fecha').value,
+                tipo_movimiento: "Ingreso",
+                fijo_variable: "FIJO", // Por defecto para consistencia
+                gasto_necesario: "Necesario",
+                tipo_gasto: document.getElementById('ingreso-categoria').value, // Inyectamos la categoría del form
+                concepto: conceptoFinal,
+                monto_pesos: parseFloat(document.getElementById('form-ingreso').querySelector('#ingreso-monto-pesos').value),
+                monto_usd: 0,
+                nota: document.getElementById('ingreso-nota').value.trim()
+            };
+
+            try {
+                const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SB_KEY,
+                        'Authorization': `Bearer ${SB_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) throw new Error("Error en guardado");
+
+                alert("Ingreso registrado correctamente.");
+                document.getElementById('form-ingreso').reset();
+                document.getElementById('ingreso-otros-container').classList.add('hidden');
+                switchTab('tab-dashboard');
+                cargarTodo();
+            } catch (err) {
+                alert("Error al guardar: " + err.message);
+            }
+        }
+
+        // LÓGICA DE PROCESAMIENTO ANALÍTICO (FILTRO TEMPORAL GLOBAL + RECALCULOS)
+        function procesarYRenderizarTableros() {
+            const filtro = document.getElementById('filtro-temporal').value;
+            const hoy = new Date();
+            const mesActualStr = String(hoy.getMonth() + 1).padStart(2, '0');
+            const anioActualStr = String(hoy.getFullYear());
+
+            let ingresosTotales = 0;
+            let gastosTotales = 0;
+            let salarioBruto = 0;
+            let deduccionesSalario = 0;
+            let gastoNoNecesario = 0;
+
+            let distribuciónCategorias = {};
+
+            // Listas temporales para limpiar las columnas actual vs futuro
+            let htmlEjecutados = "";
+            let htmlProyectados = "";
+
+            globalMovimientos.forEach(mov => {
+                const parts = mov.fecha.split('-');
+                const mAnio = parts[0];
+                const mMes = parts[1];
+
+                // Filtro por año obligatorio para todos
+                if (mAnio !== anioActualStr) return;
+
+                // Si no es filtro anual, obligamos a que coincida con el mes en curso
+                if (filtro !== 'anual' && mMes !== mesActualStr) return;
+
+                // DETECTAMOS EL ESTADO INTERPRETANDO LA NOTA INTELIGENTE
+                let estadoReal = "Ejecutado"; // Default
+                if (mov.nota && mov.nota.includes("[FINAN: Proyectado]")) {
+                    estadoReal = "Proyectado";
+                }
+
+                // Separación para el listado visual
+                if (mov.tipo_movimiento === "Gasto") {
+                    let itemHtml = `
+                        <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-xs mb-1.5 hover:border-slate-700 transition-all">
+                            <div>
+                                <p class="font-bold text-slate-200">${mov.concepto}</p>
+                                <p class="text-[10px] text-slate-400">${mov.fecha} · <span class="text-slate-500">${mov.tipo_gasto}</span></p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-black text-slate-100">$${mov.monto_pesos.toLocaleString('es-AR')}</p>
+                                ${mov.monto_usd > 0 ? `<p class="text-[9px] text-cyan-400 font-medium">${mov.monto_usd} USD</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    if (estadoReal === "Proyectado") {
+                        htmlProyectados += itemHtml;
+                    } else {
+                        htmlEjecutados += itemHtml;
+                    }
+                }
+
+                // Lógica de cálculo según la vista activa
+                if (filtro === "actual" && estadoReal === "Proyectado") {
+                    // Si estamos en vista real ejecutada, ignoramos lo proyectado del futuro
+                    return;
+                }
+
+                // Consolidación de sumas
+                if (mov.tipo_movimiento === "Ingreso") {
+                    if (mov.tipo_gasto === "Impuestos salario") {
+                        deduccionesSalario += mov.monto_pesos;
+                    } else {
+                        ingresosTotales += mov.monto_pesos;
+                    }
+                } else if (mov.tipo_movimiento === "Gasto") {
+                    gastosTotales += mov.monto_pesos;
+
+                    if (mov.gasto_necesario === "No necesario") {
+                        gastoNoNecesario += mov.monto_pesos;
+                    }
+
+                    // Acumuladores de gráficos
+                    distribuciónCategorias[mov.tipo_gasto] = (distribuciónCategorias[mov.tipo_gasto] || 0) + mov.monto_pesos;
+                }
+            });
+
+            // Inyección en listados
+            document.getElementById('lista-ejecutados').innerHTML = htmlEjecutados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos ejecutados.</p>';
+            document.getElementById('lista-proyectados').innerHTML = htmlProyectados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos proyectados cargados.</p>';
+
+            // Cálculos finales de tarjetas
+            const ahorroNeto = ingresosTotales - gastosTotales;
+            const pctAhorro = ingresosTotales > 0 ? Math.round((ahorroNeto / ingresosTotales) * 100) : 0;
+            const salarioNeto = ingresosTotales - deduccionesSalario;
+
+            // Renderizado en pantalla de números
+            document.getElementById('card-ingresos').textContent = `$${ingresosTotales.toLocaleString('es-AR')}`;
+            document.getElementById('card-gastos').textContent = `$${gastosTotales.toLocaleString('es-AR')}`;
+            
+            document.getElementById('card-ahorro').textContent = `${ahorroNeto >= 0 ? '' : '-'}$${Math.abs(ahorroNeto).toLocaleString('es-AR')}`;
+            document.getElementById('card-ahorro').className = `text-xl sm:text-2xl font-black ${ahorroNeto >= 0 ? 'text-blue-400' : 'text-rose-500'}`;
+            document.getElementById('card-ahorro-pct').textContent = `${pctAhorro}% sobre ingreso total`;
+
+            document.getElementById('card-salario-neto').textContent = `$${salarioNeto.toLocaleString('es-AR')}`;
+            document.getElementById('card-no-necesario').textContent = `$${gastoNoNecesario.toLocaleString('es-AR')}`;
+
+            // Actualización del bloque de resumen explicativo
+            renderizarResumenExplicativo(filtro, ingresosTotales, gastosTotales, ahorroNeto, pctAhorro, gastoNoNecesario);
+
+            // Renderizado del Gráfico de Torta interactivo
+            renderizarGraficoDonut(distribuciónCategorias);
+        }
+
+        function renderizarResumenExplicativo(filtro, ing, gas, ah, pct, noNec) {
+            const container = document.getElementById('resumen-texto-dashboard');
+            let titulo = filtro === 'actual' ? 'Análisis del Mes Real' : (filtro === 'proyectado' ? 'Proyección al Cierre de Mes' : 'Balance Anual Consolidado');
+            
+            container.innerHTML = `
+                <div class="border-l-4 border-blue-500 pl-3 py-1 bg-slate-900/30 rounded-r-xl">
+                    <p class="text-xs font-bold text-slate-300 uppercase tracking-wider">${titulo}</p>
+                    <p class="text-xs text-slate-400 mt-1">
+                        Estás visualizando la distribución total de tus datos correspondientes al año en curso bajo el criterio temporal seleccionado.
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <div class="p-2.5 bg-slate-900/50 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block">Eficiencia de Ahorro</span>
+                        <span class="text-sm font-black ${ah >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${pct}%</span>
+                    </div>
+                    <div class="p-2.5 bg-slate-900/50 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block">Fuga (Gasto No Nec.)</span>
+                        <span class="text-sm font-black text-amber-400">$${noNec.toLocaleString('es-AR')}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderizarGraficoDonut(dataDistribucion) {
+            const ctx = document.getElementById('chartGastos').getContext('2d');
+            
+            const labels = Object.keys(dataDistribucion);
+            const datos = Object.values(dataDistribucion);
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            if (labels.length === 0) {
+                // Estado vacío estético
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Sin datos registrados aún'],
+                        datasets: [{ data: [1], backgroundColor: ['#334155'] }]
+                    },
+                    options: { responsive: true, plugins: { legend: { display: false } } }
+                });
+                return;
+            }
+
+            // Paleta oscura elegante
+            const colores = [
+                '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4', 
+                '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#6366f1',
+                '#a855f7', '#64748b', '#0ea5e9', '#10b981', '#f43f5e'
+            ];
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: datos,
+                        backgroundColor: colores.slice(0, labels.length),
+                        borderWidth: 2,
+                        borderColor: '#1e293b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#cbd5e1', font: { size: 10 }, boxWidth: 12 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    let valor = context.raw;
+                                    let pct = Math.round((valor / total) * 100);
+                                    return ` $${valor.toLocaleString('es-AR')} (${pct}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        // CONTROLADOR DE PESTAÑAS (NAVEGACIÓN)
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('bg-blue-600', 'text-white');
+                b.classList.add('text-slate-400', 'font-semibold');
+            });
+
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            activeBtn.classList.remove('text-slate-400', 'font-semibold');
+            activeBtn.classList.add('bg-blue-600', 'text-white', 'font-bold');
+        }
+    </script>
 </body>
 </html>
-
 
 
 

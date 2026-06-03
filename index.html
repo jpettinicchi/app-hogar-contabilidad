@@ -24,7 +24,6 @@
         }
     </script>
     <style>
-        /* Estilos para ocultar scrollbars estéticos */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -97,7 +96,7 @@
     <!-- CONTENEDOR PRINCIPAL -->
     <main class="max-w-7xl mx-auto p-4 space-y-6">
 
-        <!-- TARJETAS INDICADORAS (DASHBOARD) -->
+        <!-- TARJETAS INDICADORAS -->
         <section class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
                 <p class="text-xs font-semibold text-slate-400 mb-1">Ingresos Totales</p>
@@ -138,7 +137,7 @@
             </button>
         </div>
 
-        <!-- SECCIONES / PESTAÑAS -->
+        <!-- SECCIONES -->
         
         <!-- PESTAÑA 1: DASHBOARD -->
         <div id="tab-dashboard" class="tab-content space-y-6">
@@ -151,14 +150,12 @@
                 </div>
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800 flex flex-col justify-center">
                     <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Resumen Operativo</h4>
-                    <div class="space-y-4 text-sm" id="resumen-texto-dashboard">
-                        <!-- Se llena dinámicamente -->
-                    </div>
+                    <div class="space-y-4 text-sm" id="resumen-texto-dashboard"></div>
                 </div>
             </div>
         </div>
 
-        <!-- PESTAÑA 2: CARGAR GASTO -->
+        <!-- PESTAÑA 2: CARGAR GASTO (CON PLANIFICADOR DE CUOTAS) -->
         <div id="tab-gasto" class="tab-content hidden">
             <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 max-w-3xl mx-auto">
                 <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-rose-400">
@@ -166,7 +163,7 @@
                 </h3>
                 <form id="form-gasto" onsubmit="guardarGasto(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Fecha *</label>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Fecha de Compra *</label>
                         <input type="date" id="gasto-fecha" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
@@ -202,7 +199,7 @@
                         <input type="text" id="gasto-concepto-otros" class="w-full bg-slate-900 border border-amber-600/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-amber-200">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Monto en Pesos ($) *</label>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Monto Involucrado ($) *</label>
                         <input type="number" id="gasto-monto-pesos" step="0.01" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
@@ -210,22 +207,43 @@
                         <input type="number" id="gasto-monto-usd" step="0.01" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Estado Financiero *</label>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Estado de la 1° Cuota *</label>
                         <select id="gasto-estado-virtual" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                             <option value="Ejecutado">Ejecutado (pagado ya)</option>
-                            <option value="Proyectado">Proyectado (vencimiento/compromiso futuro)</option>
+                            <option value="Proyectado">Proyectado (compromiso futuro)</option>
                         </select>
                     </div>
+
+                    <!-- NUEVOS CAMPOS EXCLUSIVOS PARA DIVIDIR EN CUOTAS -->
+                    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold mb-1 text-blue-400">¿Dividir en cuotas fijas?</label>
+                            <select id="gasto-cuotas" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                                <option value="1">No, pago único completo</option>
+                                <option value="3">3 Cuotas iguales</option>
+                                <option value="6">6 Cuotas iguales</option>
+                                <option value="9">9 Cuotas iguales</option>
+                                <option value="12">12 Cuotas iguales</option>
+                                <option value="18">18 Cuotas iguales</option>
+                                <option value="24">24 Cuotas iguales</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1 text-blue-400">¿Cuándo impacta la 1° cuota?</label>
+                            <select id="gasto-mes-inicio" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                                <option value="0">En el Mes Actual de la compra</option>
+                                <option value="1">Al Mes Siguiente (Cierre posterior)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="sm:col-span-3">
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Nota / Comentario</label>
-                        <input type="text" id="gasto-nota" placeholder="Detalles extra del gasto..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        <input type="text" id="gasto-nota" placeholder="Detalles extra..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
                     <div class="sm:col-span-3 flex gap-3 mt-2">
                         <button type="submit" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-600/10 flex items-center gap-2">
                             <i class="fa-solid fa-floppy-disk"></i> Guardar Gasto
-                        </button>
-                        <button type="button" onclick="document.getElementById('form-gasto').reset(); document.getElementById('gasto-otros-container').classList.add('hidden');" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all">
-                            Limpiar
                         </button>
                     </div>
                 </form>
@@ -280,39 +298,30 @@
             </div>
         </div>
 
-        <!-- PESTAÑA 4: LISTADO DE MOVIMIENTOS COMPLETO (SISTEMA DE COLUMNAS ACTUAL VS FUTURO) -->
+        <!-- PESTAÑA 4: LISTADO DE MOVIMIENTOS -->
         <div id="tab-movimientos" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- COLUMNA IZQUIERDA: EJECUTADOS -->
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
                     <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2">
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos Actuales / Ejecutados
                     </h3>
-                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto pr-1" id="lista-ejecutados">
-                        <!-- Carga dinámica -->
-                    </div>
+                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto pr-1" id="lista-ejecutados"></div>
                 </div>
-
-                <!-- COLUMNA DERECHA: PROYECTADOS -->
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
                     <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2">
                         <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Gastos Proyectados / Futuros
                     </h3>
-                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto pr-1" id="lista-proyectados">
-                        <!-- Carga dinámica -->
-                    </div>
+                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto pr-1" id="lista-proyectados"></div>
                 </div>
             </div>
         </div>
 
     </main>
 
-    <!-- LOGICA JAVASCRIPT INTEGRADA -->
     <script>
-        // CONFIGURACIÓN DE TU MATRIZ DINÁMICA
         const matrizConceptos = {
             "Casa": ["Hipoteca", "Seguro Hipoteca", "Cuenta BNA", "Expensas", "Deuda 42,000 usd+cred", "Pinturerias", "Colchones", "Reparaciones Casa"],
-            "Comida": ["Verduleria", "Panaderia /pastas / Hel", "Pescado", "Mayorista", "Supermercados", "Fiambres", "Frutos secos", "Carne / pollo"],
+            "Comida": ["Verduleria", "Panaderia /pastas / Hel", "Pescado", "Mayorista", "Supermerkados", "Fiambres", "Frutos secos", "Carne / pollo"],
             "Muebles/Equipos": ["Electrodomesticos", "Essen"],
             "Esparcimiento": ["Delibery / Salidas /Helados", "Vacaciones"],
             "Medicamentos": ["Farmacias"],
@@ -338,41 +347,29 @@
             "Impuestos salario": ["Jubilación", "Ganancias", "O social"]
         };
 
-        // VARIABLES GLOBALES DE CONEXIÓN
-        let SB_URL = "";
-        let SB_KEY = "";
-        let globalMovimientos = [];
-        let chartInstance = null;
+        let SB_URL = ""; let SB_KEY = ""; let globalMovimientos = []; let chartInstance = null;
 
-        // INICIALIZACIÓN
         document.addEventListener("DOMContentLoaded", () => {
-            // Setea fecha de hoy en los formularios
             const hoy = new Date().toISOString().split('T')[0];
             document.getElementById('gasto-fecha').value = hoy;
             document.getElementById('ingreso-fecha').value = hoy;
 
-            // Renderiza los selectores iniciales
             const tGastoSelect = document.getElementById('gasto-tipo');
             Object.keys(matrizConceptos).forEach(cat => {
                 let op = document.createElement('option');
                 op.value = cat; op.textContent = cat;
                 tGastoSelect.appendChild(op);
             });
-
             intentarConexionAutomatica();
         });
 
         function intentarConexionAutomatica() {
-            // Plan A: Busca en LocalStorage para no perder persistencia
             const cachedUrl = localStorage.getItem("hogar_sb_url");
             const cachedKey = localStorage.getItem("hogar_sb_key");
-
             if (cachedUrl && cachedKey) {
-                SB_URL = cachedUrl;
-                SB_KEY = cachedKey;
+                SB_URL = cachedUrl; SB_KEY = cachedKey;
                 verificarConexionReal();
             } else {
-                // Si no hay nada guardado, abre la carga obligatoria por primera vez
                 document.getElementById('modal-conexion').classList.remove('hidden');
             }
         }
@@ -380,24 +377,15 @@
         async function verificarConexionReal() {
             actualizarIndicadorStatus("bg-amber-500", "Validando base...");
             try {
-                // Hacemos una consulta liviana para chequear que la tabla exista
                 const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar?limit=1`, {
                     method: 'GET',
-                    headers: {
-                        'apikey': SB_KEY,
-                        'Authorization': `Bearer ${SB_KEY}`
-                    }
+                    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
                 });
-
-                if (!res.ok) throw new Error("Error en respuesta de base de datos");
-
+                if (!res.ok) throw new Error("Error de conexión");
                 actualizarIndicadorStatus("bg-emerald-500", "Conectado");
                 document.getElementById('modal-conexion').classList.add('hidden');
                 cargarTodo();
             } catch (err) {
-                console.error(err);
-                actualizarIndicadorStatus("bg-rose-500", "Error de tabla");
-                document.getElementById('setup-error').textContent = "Error al conectar: Verifica que la URL/Key sean las correctas y que la tabla 'movimientos_hogar' esté creada.";
                 document.getElementById('setup-error').classList.remove('hidden');
                 document.getElementById('modal-conexion').classList.remove('hidden');
             }
@@ -406,44 +394,29 @@
         function guardarConfiguracionManual() {
             const urlInput = document.getElementById('setup-url').value.trim();
             const keyInput = document.getElementById('setup-key').value.trim();
-
-            if (!urlInput || !keyInput) {
-                alert("Por favor completa todos los campos.");
-                return;
-            }
-
+            if (!urlInput || !keyInput) return alert("Completa los campos.");
             localStorage.setItem("hogar_sb_url", urlInput);
             localStorage.setItem("hogar_sb_key", keyInput);
-            SB_URL = urlInput;
-            SB_KEY = keyInput;
-            
-            document.getElementById('setup-error').classList.add('hidden');
+            SB_URL = urlInput; SB_KEY = keyInput;
             verificarConexionReal();
         }
 
         function actualizarIndicadorStatus(colorClass, text) {
-            const dot = document.getElementById('status-dot');
-            const txt = document.getElementById('status-text');
-            dot.className = `w-2 h-2 rounded-full ${colorClass}`;
-            txt.textContent = text;
+            document.getElementById('status-dot').className = `w-2 h-2 rounded-full ${colorClass}`;
+            document.getElementById('status-text').textContent = text;
         }
 
-        // CONTROLADORES DE RENDERIZACIÓN DE SELECTORES DINÁMICOS
         function actualizarConceptosGasto() {
             const tipo = document.getElementById('gasto-tipo').value;
-            const conceptoSelect = document.getElementById('gasto-concepto');
-            conceptoSelect.innerHTML = '<option value="">Seleccionar concepto...</option>';
-            document.getElementById('gasto-otros-container').classList.add('hidden');
-
+            const conSelect = document.getElementById('gasto-concepto');
+            conSelect.innerHTML = '<option value="">Seleccionar concepto...</option>';
             if (matrizConceptos[tipo]) {
                 matrizConceptos[tipo].forEach(c => {
-                    let op = document.createElement('option');
-                    op.value = c; op.textContent = c;
-                    conceptoSelect.appendChild(op);
+                    let op = document.createElement('option'); op.value = c; op.textContent = c;
+                    conSelect.appendChild(op);
                 });
-                let opOtros = document.createElement('option');
-                opOtros.value = "Otros..."; opOtros.textContent = "Otros...";
-                conceptoSelect.appendChild(opOtros);
+                let opO = document.createElement('option'); opO.value = "Otros..."; opO.textContent = "Otros...";
+                conSelect.appendChild(opO);
             }
         }
 
@@ -451,52 +424,34 @@
             const cat = document.getElementById('ingreso-categoria').value;
             const compSelect = document.getElementById('ingreso-concepto');
             compSelect.innerHTML = '<option value="">Seleccionar concepto...</option>';
-            document.getElementById('ingreso-otros-container').classList.add('hidden');
-
             if (matrizIngresos[cat]) {
                 matrizIngresos[cat].forEach(c => {
-                    let op = document.createElement('option');
-                    op.value = c; op.textContent = c;
+                    let op = document.createElement('option'); op.value = c; op.textContent = c;
                     compSelect.appendChild(op);
                 });
-                let opOtros = document.createElement('option');
-                opOtros.value = "Otros..."; opOtros.textContent = "Otros...";
-                compSelect.appendChild(opOtros);
             }
         }
 
         function chequearConceptoOtros(selectElem, containerId) {
-            const container = document.getElementById(containerId);
-            if (selectElem.value === "Otros...") {
-                container.classList.remove('hidden');
-            } else {
-                container.classList.add('hidden');
-            }
+            document.getElementById(containerId).classList.toggle('hidden', selectElem.value !== "Otros...");
         }
 
-        // PETICIONES API A SUPABASE (GET / INSERT)
         async function cargarTodo() {
             if (!SB_URL) return;
             try {
                 const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar?order=fecha.desc`, {
                     method: 'GET',
-                    headers: {
-                        'apikey': SB_KEY,
-                        'Authorization': `Bearer ${SB_KEY}`
-                    }
+                    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
                 });
-                if (!res.ok) throw new Error("Error recuperando registros");
                 globalMovimientos = await res.json();
-                
                 document.getElementById('status-text').textContent = `Conectado · ${globalMovimientos.length} registros`;
-                
                 procesarYRenderizarTableros();
-            } catch (err) {
-                console.error(err);
-                actualizarIndicadorStatus("bg-rose-500", "Error de sincronización");
-            }
+            } catch (err) { console.error(err); }
         }
 
+        // ==========================================
+        // MOTOR INTELIGENTE DE GENERACIÓN DE CUOTAS
+        // ==========================================
         async function guardarGasto(e) {
             e.preventDefault();
             
@@ -505,25 +460,50 @@
                 conceptoFinal = document.getElementById('gasto-concepto-otros').value.trim() || "Otros";
             }
 
-            // LEEMOS EL ESTADO (EJECUTADO O PROYECTADO)
-            const estadoVirtual = document.getElementById('gasto-estado-virtual').value;
-            
-            // CONSTRUCCIÓN DE LA NOTA INTELIGENTE (BURLANDO LA COLUMNA FÍSICA FALTANTE)
-            let notaOriginal = document.getElementById('gasto-nota').value.trim();
-            let notaFinal = notaOriginal ? `${notaOriginal} [FINAN: ${estadoVirtual}]` : `[FINAN: ${estadoVirtual}]`;
+            const montoTotalPesos = parseFloat(document.getElementById('gasto-monto-pesos').value);
+            const montoTotalUsd = parseFloat(document.getElementById('gasto-monto-usd').value) || 0;
+            const cuotasPedidas = parseInt(document.getElementById('gasto-cuotas').value);
+            const mesInicioDesfase = parseInt(document.getElementById('gasto-mes-inicio').value);
+            const estado1raCuota = document.getElementById('gasto-estado-virtual').value;
+            const fechaOriginalStr = document.getElementById('gasto-fecha').value; 
+            const notaBase = document.getElementById('gasto-nota').value.trim();
 
-            const payload = {
-                fecha: document.getElementById('gasto-fecha').value,
-                tipo_movimiento: "Gasto",
-                fijo_variable: document.getElementById('gasto-fijo-variable').value,
-                gasto_necesario: document.getElementById('gasto-necesario').value,
-                tipo_gasto: document.getElementById('gasto-tipo').value,
-                concepto: conceptoFinal,
-                monto_pesos: parseFloat(document.getElementById('gasto-monto-pesos').value),
-                monto_usd: parseFloat(document.getElementById('gasto-monto-usd').value) || 0,
-                nota: notaFinal
-            };
+            // Dividimos los montos equitativamente
+            const montoPorCuotaPesos = Number((montoTotalPesos / cuotasPedidas).toFixed(2));
+            const montoPorCuotaUsd = Number((montoTotalUsd / cuotasPedidas).toFixed(2));
 
+            let registrosAGuardar = [];
+
+            // Generamos las fechas mes a mes de forma limpia
+            for (let i = 0; i < cuotasPedidas; i++) {
+                let fechaCuota = new Date(fechaOriginalStr + "T00:00:00");
+                
+                // Aplicamos el mes de inicio + el avance de cuota correspondiente
+                fechaCuota.setMonth(fechaCuota.getMonth() + mesInicioDesfase + i);
+                
+                let fechaFormateada = fechaCuota.toISOString().split('T')[0];
+
+                // Solo la primera cuota respeta el estado del formulario; las siguientes van directo a "Proyectado"
+                let estadoCuotaActual = (i === 0) ? estado1raCuota : "Proyectado";
+
+                // Armamos la nota identificadora
+                let prefijoCuota = cuotasPedidas > 1 ? `[Cuota ${i + 1}/${cuotasPedidas}] ` : "";
+                let notaFinal = `${prefijoCuota}${notaBase} [FINAN: ${estadoCuotaActual}]`.trim();
+
+                registrosAGuardar.push({
+                    fecha: fechaFormateada,
+                    tipo_movimiento: "Gasto",
+                    fijo_variable: document.getElementById('gasto-fijo-variable').value,
+                    gasto_necesario: document.getElementById('gasto-necesario').value,
+                    tipo_gasto: document.getElementById('gasto-tipo').value,
+                    concepto: conceptoFinal,
+                    monto_pesos: montoPorCuotaPesos,
+                    monto_usd: montoPorCuotaUsd,
+                    nota: notaFinal
+                });
+            }
+
+            // Impactamos en masa (Bulk Insert) a Supabase
             try {
                 const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
                     method: 'POST',
@@ -533,58 +513,14 @@
                         'Content-Type': 'application/json',
                         'Prefer': 'return=minimal'
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(registrosAGuardar)
                 });
 
-                if (!res.ok) throw new Error("Error en el guardado de datos");
+                if (!res.ok) throw new Error("Error enviando lote a Supabase");
 
-                alert("Gasto registrado de forma impecable.");
+                alert(cuotasPedidas > 1 ? `¡Se generaron las ${cuotasPedidas} cuotas con éxito total en el tiempo!` : "Gasto registrado impecable.");
                 document.getElementById('form-gasto').reset();
                 document.getElementById('gasto-otros-container').classList.add('hidden');
-                switchTab('tab-dashboard');
-                cargarTodo();
-            } catch (err) {
-                alert("Ocurrió un error al guardar: " + err.message);
-            }
-        }
-
-        async function guardarIngreso(e) {
-            e.preventDefault();
-
-            let conceptoFinal = document.getElementById('ingreso-concepto').value;
-            if (conceptoFinal === "Otros...") {
-                conceptoFinal = document.getElementById('ingreso-concepto-otros').value.trim() || "Otros";
-            }
-
-            const payload = {
-                fecha: document.getElementById('ingreso-fecha').value,
-                tipo_movimiento: "Ingreso",
-                fijo_variable: "FIJO", // Por defecto para consistencia
-                gasto_necesario: "Necesario",
-                tipo_gasto: document.getElementById('ingreso-categoria').value, // Inyectamos la categoría del form
-                concepto: conceptoFinal,
-                monto_pesos: parseFloat(document.getElementById('form-ingreso').querySelector('#ingreso-monto-pesos').value),
-                monto_usd: 0,
-                nota: document.getElementById('ingreso-nota').value.trim()
-            };
-
-            try {
-                const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
-                    method: 'POST',
-                    headers: {
-                        'apikey': SB_KEY,
-                        'Authorization': `Bearer ${SB_KEY}`,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!res.ok) throw new Error("Error en guardado");
-
-                alert("Ingreso registrado correctamente.");
-                document.getElementById('form-ingreso').reset();
-                document.getElementById('ingreso-otros-container').classList.add('hidden');
                 switchTab('tab-dashboard');
                 cargarTodo();
             } catch (err) {
@@ -592,220 +528,108 @@
             }
         }
 
-        // LÓGICA DE PROCESAMIENTO ANALÍTICO (FILTRO TEMPORAL GLOBAL + RECALCULOS)
+        async function guardarIngreso(e) {
+            e.preventDefault();
+            let conceptoFinal = document.getElementById('ingreso-concepto').value;
+            const payload = {
+                fecha: document.getElementById('ingreso-fecha').value,
+                tipo_movimiento: "Ingreso", fijo_variable: "FIJO", gasto_necesario: "Necesario",
+                tipo_gasto: document.getElementById('ingreso-categoria').value,
+                concepto: conceptoFinal,
+                monto_pesos: parseFloat(document.getElementById('form-ingreso').querySelector('#ingreso-monto-pesos').value),
+                monto_usd: 0, nota: document.getElementById('ingreso-nota').value.trim()
+            };
+            try {
+                const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
+                    method: 'POST',
+                    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error("Error");
+                document.getElementById('form-ingreso').reset();
+                switchTab('tab-dashboard'); cargarTodo();
+            } catch (err) { alert(err.message); }
+        }
+
         function procesarYRenderizarTableros() {
             const filtro = document.getElementById('filtro-temporal').value;
             const hoy = new Date();
             const mesActualStr = String(hoy.getMonth() + 1).padStart(2, '0');
             const anioActualStr = String(hoy.getFullYear());
 
-            let ingresosTotales = 0;
-            let gastosTotales = 0;
-            let salarioBruto = 0;
-            let deduccionesSalario = 0;
-            let gastoNoNecesario = 0;
-
-            let distribuciónCategorias = {};
-
-            // Listas temporales para limpiar las columnas actual vs futuro
-            let htmlEjecutados = "";
-            let htmlProyectados = "";
+            let ingresosTotales = 0; let gastosTotales = 0; let deduccionesSalario = 0; let gastoNoNecesario = 0;
+            let distribuciónCategorias = {}; let htmlEjecutados = ""; let htmlProyectados = "";
 
             globalMovimientos.forEach(mov => {
                 const parts = mov.fecha.split('-');
-                const mAnio = parts[0];
-                const mMes = parts[1];
+                if (parts[0] !== anioActualStr) return;
+                if (filtro !== 'anual' && parts[1] !== mesActualStr) return;
 
-                // Filtro por año obligatorio para todos
-                if (mAnio !== anioActualStr) return;
-
-                // Si no es filtro anual, obligamos a que coincida con el mes en curso
-                if (filtro !== 'anual' && mMes !== mesActualStr) return;
-
-                // DETECTAMOS EL ESTADO INTERPRETANDO LA NOTA INTELIGENTE
-                let estadoReal = "Ejecutado"; // Default
+                let estadoReal = "Ejecutado";
                 if (mov.nota && mov.nota.includes("[FINAN: Proyectado]")) {
                     estadoReal = "Proyectado";
                 }
 
-                // Separación para el listado visual
                 if (mov.tipo_movimiento === "Gasto") {
                     let itemHtml = `
-                        <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-xs mb-1.5 hover:border-slate-700 transition-all">
+                        <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-xs mb-1.5">
                             <div>
                                 <p class="font-bold text-slate-200">${mov.concepto}</p>
-                                <p class="text-[10px] text-slate-400">${mov.fecha} · <span class="text-slate-500">${mov.tipo_gasto}</span></p>
+                                <p class="text-[10px] text-slate-400">${mov.fecha} · <span class="text-slate-500">${mov.nota || mov.tipo_gasto}</span></p>
                             </div>
                             <div class="text-right">
                                 <p class="font-black text-slate-100">$${mov.monto_pesos.toLocaleString('es-AR')}</p>
-                                ${mov.monto_usd > 0 ? `<p class="text-[9px] text-cyan-400 font-medium">${mov.monto_usd} USD</p>` : ''}
                             </div>
                         </div>
                     `;
-                    if (estadoReal === "Proyectado") {
-                        htmlProyectados += itemHtml;
-                    } else {
-                        htmlEjecutados += itemHtml;
-                    }
+                    if (estadoReal === "Proyectado") htmlProyectados += itemHtml;
+                    else htmlEjecutados += itemHtml;
                 }
 
-                // Lógica de cálculo según la vista activa
-                if (filtro === "actual" && estadoReal === "Proyectado") {
-                    // Si estamos en vista real ejecutada, ignoramos lo proyectado del futuro
-                    return;
-                }
+                if (filtro === "actual" && estadoReal === "Proyectado") return;
 
-                // Consolidación de sumas
                 if (mov.tipo_movimiento === "Ingreso") {
-                    if (mov.tipo_gasto === "Impuestos salario") {
-                        deduccionesSalario += mov.monto_pesos;
-                    } else {
-                        ingresosTotales += mov.monto_pesos;
-                    }
+                    if (mov.tipo_gasto === "Impuestos salario") deduccionesSalario += mov.monto_pesos;
+                    else ingresosTotales += mov.monto_pesos;
                 } else if (mov.tipo_movimiento === "Gasto") {
                     gastosTotales += mov.monto_pesos;
-
-                    if (mov.gasto_necesario === "No necesario") {
-                        gastoNoNecesario += mov.monto_pesos;
-                    }
-
-                    // Acumuladores de gráficos
+                    if (mov.gasto_necesario === "No necesario") gastoNoNecesario += mov.monto_pesos;
                     distribuciónCategorias[mov.tipo_gasto] = (distribuciónCategorias[mov.tipo_gasto] || 0) + mov.monto_pesos;
                 }
             });
 
-            // Inyección en listados
-            document.getElementById('lista-ejecutados').innerHTML = htmlEjecutados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos ejecutados.</p>';
-            document.getElementById('lista-proyectados').innerHTML = htmlProyectados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos proyectados cargados.</p>';
+            document.getElementById('lista-ejecutados').innerHTML = htmlEjecutados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos.</p>';
+            document.getElementById('lista-proyectados').innerHTML = htmlProyectados || '<p class="text-xs text-slate-500 p-2 italic">Sin cuotas futuras.</p>';
 
-            // Cálculos finales de tarjetas
-            const ahorroNeto = ingresosTotales - gastosTotales;
-            const pctAhorro = ingresosTotales > 0 ? Math.round((ahorroNeto / ingresosTotales) * 100) : 0;
-            const salarioNeto = ingresosTotales - deduccionesSalario;
-
-            // Renderizado en pantalla de números
             document.getElementById('card-ingresos').textContent = `$${ingresosTotales.toLocaleString('es-AR')}`;
             document.getElementById('card-gastos').textContent = `$${gastosTotales.toLocaleString('es-AR')}`;
-            
-            document.getElementById('card-ahorro').textContent = `${ahorroNeto >= 0 ? '' : '-'}$${Math.abs(ahorroNeto).toLocaleString('es-AR')}`;
-            document.getElementById('card-ahorro').className = `text-xl sm:text-2xl font-black ${ahorroNeto >= 0 ? 'text-blue-400' : 'text-rose-500'}`;
-            document.getElementById('card-ahorro-pct').textContent = `${pctAhorro}% sobre ingreso total`;
-
-            document.getElementById('card-salario-neto').textContent = `$${salarioNeto.toLocaleString('es-AR')}`;
+            document.getElementById('card-ahorro').textContent = `$${(ingresosTotales - gastosTotales).toLocaleString('es-AR')}`;
+            document.getElementById('card-salario-neto').textContent = `$${(ingresosTotales - deduccionesSalario).toLocaleString('es-AR')}`;
             document.getElementById('card-no-necesario').textContent = `$${gastoNoNecesario.toLocaleString('es-AR')}`;
 
-            // Actualización del bloque de resumen explicativo
-            renderizarResumenExplicativo(filtro, ingresosTotales, gastosTotales, ahorroNeto, pctAhorro, gastoNoNecesario);
-
-            // Renderizado del Gráfico de Torta interactivo
             renderizarGraficoDonut(distribuciónCategorias);
-        }
-
-        function renderizarResumenExplicativo(filtro, ing, gas, ah, pct, noNec) {
-            const container = document.getElementById('resumen-texto-dashboard');
-            let titulo = filtro === 'actual' ? 'Análisis del Mes Real' : (filtro === 'proyectado' ? 'Proyección al Cierre de Mes' : 'Balance Anual Consolidado');
-            
-            container.innerHTML = `
-                <div class="border-l-4 border-blue-500 pl-3 py-1 bg-slate-900/30 rounded-r-xl">
-                    <p class="text-xs font-bold text-slate-300 uppercase tracking-wider">${titulo}</p>
-                    <p class="text-xs text-slate-400 mt-1">
-                        Estás visualizando la distribución total de tus datos correspondientes al año en curso bajo el criterio temporal seleccionado.
-                    </p>
-                </div>
-                <div class="grid grid-cols-2 gap-2 pt-2">
-                    <div class="p-2.5 bg-slate-900/50 rounded-xl border border-slate-800/80">
-                        <span class="text-[10px] text-slate-400 block">Eficiencia de Ahorro</span>
-                        <span class="text-sm font-black ${ah >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${pct}%</span>
-                    </div>
-                    <div class="p-2.5 bg-slate-900/50 rounded-xl border border-slate-800/80">
-                        <span class="text-[10px] text-slate-400 block">Fuga (Gasto No Nec.)</span>
-                        <span class="text-sm font-black text-amber-400">$${noNec.toLocaleString('es-AR')}</span>
-                    </div>
-                </div>
-            `;
         }
 
         function renderizarGraficoDonut(dataDistribucion) {
             const ctx = document.getElementById('chartGastos').getContext('2d');
-            
-            const labels = Object.keys(dataDistribucion);
-            const datos = Object.values(dataDistribucion);
-
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-
-            if (labels.length === 0) {
-                // Estado vacío estético
-                chartInstance = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Sin datos registrados aún'],
-                        datasets: [{ data: [1], backgroundColor: ['#334155'] }]
-                    },
-                    options: { responsive: true, plugins: { legend: { display: false } } }
-                });
-                return;
-            }
-
-            // Paleta oscura elegante
-            const colores = [
-                '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4', 
-                '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#6366f1',
-                '#a855f7', '#64748b', '#0ea5e9', '#10b981', '#f43f5e'
-            ];
-
+            const labels = Object.keys(dataDistribucion); const datos = Object.values(dataDistribucion);
+            if (chartInstance) chartInstance.destroy();
             chartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        data: datos,
-                        backgroundColor: colores.slice(0, labels.length),
-                        borderWidth: 2,
-                        borderColor: '#1e293b'
-                    }]
+                    datasets: [{ data: datos, backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4'], borderWidth: 1 }]
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#cbd5e1', font: { size: 10 }, boxWidth: 12 }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    let valor = context.raw;
-                                    let pct = Math.round((valor / total) * 100);
-                                    return ` $${valor.toLocaleString('es-AR')} (${pct}%)`;
-                                }
-                            }
-                        }
-                    },
-                    cutout: '65%'
-                }
+                options: { responsive: true, cutout: '70%' }
             });
         }
 
-        // CONTROLADOR DE PESTAÑAS (NAVEGACIÓN)
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
-
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.remove('bg-blue-600', 'text-white');
-                b.classList.add('text-slate-400', 'font-semibold');
-            });
-
-            const activeBtn = document.getElementById(`btn-${tabId}`);
-            activeBtn.classList.remove('text-slate-400', 'font-semibold');
-            activeBtn.classList.add('bg-blue-600', 'text-white', 'font-bold');
         }
     </script>
 </body>
 </html>
-
 
 

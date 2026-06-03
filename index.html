@@ -13,14 +13,7 @@
       darkMode: 'class',
       theme: {
         extend: {
-          fontFamily: { sans: ['DM Sans', 'sans-serif'], mono: ['DM Mono', 'monospace'] },
-          colors: {
-            surface: { 900: '#0d1117', 800: '#161b22', 700: '#21262d', 600: '#30363d', 500: '#3d444d' },
-            accent: { DEFAULT: '#58a6ff', dim: '#1f6feb' },
-            success: '#3fb950',
-            danger: '#f85149',
-            warn: '#d29922',
-          }
+          fontFamily: { sans: ['DM Sans', 'sans-serif'], mono: ['DM Mono', 'monospace'] }
         }
       }
     }
@@ -59,33 +52,108 @@
     .scroll-thin::-webkit-scrollbar-track { background: transparent; }
     .scroll-thin::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
     select option { background: #21262d; }
-    .spinner { width: 18px; height: 18px; border: 2px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+    .spinner { width: 18px; height: 18px; border: 2px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; padding: 12px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 20px #0008; transform: translateY(80px); opacity: 0; transition: all .3s; }
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; padding: 12px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 20px #0008; transform: translateY(80px); opacity: 0; transition: all .3s; pointer-events:none; }
     .toast.show { transform: translateY(0); opacity: 1; }
     .toast.success { background: #3fb950; color: #0d1117; }
     .toast.error { background: #f85149; color: #fff; }
+    /* MODAL CREDENCIALES */
+    #modalCreds {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(1,4,9,0.85); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+    #modalCreds .modal-box {
+      background: #161b22; border: 1px solid #30363d; border-radius: 16px;
+      width: 100%; max-width: 480px; padding: 28px 24px;
+      box-shadow: 0 24px 64px #000a;
+      animation: slideUp .35s cubic-bezier(.16,1,.3,1);
+    }
+    @keyframes slideUp { from { transform: translateY(32px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+    .cred-input {
+      background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+      color: #e6edf3; padding: 10px 14px; width: 100%; font-size: 13px;
+      font-family: 'DM Mono', monospace; transition: border-color .2s; margin-top: 6px;
+    }
+    .cred-input:focus { outline: none; border-color: #58a6ff; }
+    .cred-label { font-size: 12px; color: #8b949e; font-weight: 500; }
     @media (max-width: 640px) {
-      .input-field, .btn-primary, .tab-btn { font-size: 16px; padding-top: 12px; padding-bottom: 12px; }
+      .input-field { font-size: 16px; }
+      .btn-primary { font-size: 15px; padding: 12px 20px; }
     }
   </style>
 </head>
 <body class="min-h-screen">
 
+<!-- ═══════════════════════════════════════════
+     MODAL CREDENCIALES SUPABASE
+═══════════════════════════════════════════ -->
+<div id="modalCreds" style="display:none;">
+  <div class="modal-box">
+    <div class="flex items-center gap-3 mb-5">
+      <span style="font-size:28px;">🔑</span>
+      <div>
+        <h2 class="font-bold text-base">Configurar conexión</h2>
+        <p class="text-xs text-gray-400 mt-0.5">Solo se pide la primera vez · Se guarda en este dispositivo</p>
+      </div>
+    </div>
+
+    <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:12px 14px;margin-bottom:18px;">
+      <p class="text-xs text-gray-400 leading-relaxed">
+        Encontrás estos datos en tu proyecto de Supabase →
+        <span class="text-blue-400">Settings → API</span>.
+        La <strong class="text-gray-200">URL</strong> y la clave <strong class="text-gray-200">anon/public</strong>.
+      </p>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="cred-label">Supabase URL *</label>
+        <input type="url" id="credUrl" class="cred-input" placeholder="https://xxxxxxxxxxxx.supabase.co" autocomplete="off" spellcheck="false">
+      </div>
+      <div>
+        <label class="cred-label">Anon Key (clave pública) *</label>
+        <input type="password" id="credKey" class="cred-input" placeholder="eyJhbGci..." autocomplete="off" spellcheck="false">
+        <p class="text-xs text-gray-500 mt-1">Se guarda encriptada en localStorage de este navegador</p>
+      </div>
+    </div>
+
+    <div id="credError" style="display:none;margin-top:12px;padding:10px 14px;background:#f8514918;border:1px solid #f8514944;border-radius:8px;">
+      <p id="credErrorMsg" class="text-xs text-red-400"></p>
+    </div>
+
+    <div class="flex gap-3 mt-6">
+      <button class="btn-primary flex-1" onclick="guardarCredenciales()">
+        <span id="credBtnText">Conectar y guardar</span>
+        <span id="credSpinner" class="spinner ml-2" style="display:none;"></span>
+      </button>
+    </div>
+
+    <p class="text-xs text-gray-500 text-center mt-4">
+      Para cambiar las credenciales luego, usá el botón ⚙️ en el header.
+    </p>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
 
-<!-- HEADER -->
+<!-- ═══════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════ -->
 <header class="sticky top-0 z-50" style="background:#0d1117cc;backdrop-filter:blur(12px);border-bottom:1px solid #30363d;">
   <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
     <div class="flex items-center gap-3">
       <span class="text-2xl">🏠</span>
       <div>
         <h1 class="font-bold text-lg leading-tight">Contabilidad del Hogar</h1>
-        <p class="text-xs text-gray-500 font-mono" id="statusBar">Conectando...</p>
+        <p class="text-xs font-mono" id="statusBar" style="color:#8b949e;">Iniciando...</p>
       </div>
     </div>
     <div class="flex items-center gap-2">
+      <button onclick="abrirModalCreds()" title="Cambiar credenciales Supabase"
+        style="background:#21262d;border:1px solid #30363d;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;line-height:1;">⚙️</button>
       <label class="text-xs text-gray-400 font-mono whitespace-nowrap">Vista:</label>
       <select id="globalFilter" class="input-field" style="width:auto;font-size:13px;padding:6px 10px;">
         <option value="mes_actual">📅 Mes Actual</option>
@@ -96,6 +164,9 @@
   </div>
 </header>
 
+<!-- ═══════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════ -->
 <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
   <!-- DASHBOARD CARDS -->
@@ -133,8 +204,7 @@
 
   <!-- TAB: DASHBOARD -->
   <section id="tab-dashboard">
-    <!-- Config proyección -->
-    <div class="card p-4 mb-4" id="configProyeccion" style="display:none;">
+    <div class="card p-4 mb-4" id="configProyeccion">
       <h3 class="font-semibold text-sm mb-3 text-gray-300">⚙️ Parámetros de Proyección</h3>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
@@ -153,7 +223,6 @@
       <button class="btn-primary mt-3 text-sm" onclick="recalcular()">Recalcular Proyección</button>
     </div>
 
-    <!-- Gráficos -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="card p-4">
         <h3 class="font-semibold text-sm mb-3 text-gray-300">🥧 Gastos Actuales por Tipo</h3>
@@ -177,7 +246,6 @@
     <div class="card p-5">
       <h2 class="font-bold text-base mb-4">💸 Nuevo Gasto</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
         <div>
           <label class="text-xs text-gray-400 block mb-1">Fecha *</label>
           <input type="date" id="g-fecha" class="input-field">
@@ -248,10 +316,10 @@
           </select>
         </div>
       </div>
-      <div class="mt-5 flex gap-3">
+      <div class="mt-5 flex gap-3 flex-wrap">
         <button class="btn-primary" onclick="guardarGasto()">
           <span id="btnGastoText">💾 Guardar Gasto</span>
-          <span id="btnGastoSpinner" class="spinner ml-2" style="display:none;vertical-align:middle;"></span>
+          <span id="btnGastoSpinner" class="spinner ml-2" style="display:none;"></span>
         </button>
         <button class="btn-secondary" onclick="limpiarFormGasto()">🗑 Limpiar</button>
       </div>
@@ -288,10 +356,10 @@
           <input type="number" id="i-monto" class="input-field" placeholder="0.00" step="0.01" min="0">
         </div>
       </div>
-      <div class="mt-5 flex gap-3">
+      <div class="mt-5 flex gap-3 flex-wrap">
         <button class="btn-primary" onclick="guardarIngreso()">
           <span id="btnIngresoText">💾 Guardar Ingreso</span>
-          <span id="btnIngresoSpinner" class="spinner ml-2" style="display:none;vertical-align:middle;"></span>
+          <span id="btnIngresoSpinner" class="spinner ml-2" style="display:none;"></span>
         </button>
         <button class="btn-secondary" onclick="limpiarFormIngreso()">🗑 Limpiar</button>
       </div>
@@ -302,7 +370,6 @@
   <section id="tab-movimientos" style="display:none;">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-      <!-- COLUMNA IZQUIERDA: Ejecutados -->
       <div class="card p-4">
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold text-sm">✅ Gastos Ejecutados</h3>
@@ -313,13 +380,11 @@
         </div>
       </div>
 
-      <!-- COLUMNA DERECHA: Proyectados -->
       <div class="card p-4">
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold text-sm">🔮 Gastos Proyectados / Futuros</h3>
           <span id="countProyectados" class="pill pill-blue">0</span>
         </div>
-        <!-- Gastos fijos automáticos -->
         <div class="mb-3 p-3 rounded-lg" style="background:#21262d;border:1px solid #30363d;">
           <p class="text-xs text-gray-400 font-semibold mb-2">Compromisos automáticos</p>
           <div id="listaCompromisosAuto" class="space-y-1 text-xs text-gray-300">
@@ -333,7 +398,6 @@
 
     </div>
 
-    <!-- Ingresos -->
     <div class="card p-4 mt-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="font-semibold text-sm">💰 Ingresos del Período</h3>
@@ -347,94 +411,204 @@
 
 </main>
 
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════ -->
 <script>
-// ============================================================
-// CONFIG SUPABASE
-// ============================================================
-const SUPABASE_URL = typeof process !== 'undefined' && process.env ? process.env.SUPABASE_URL : (window.__SUPABASE_URL__ || '');
-const SUPABASE_KEY = typeof process !== 'undefined' && process.env ? process.env.SUPABASE_KEY : (window.__SUPABASE_KEY__ || '');
+'use strict';
 
-let supabase = null;
-try {
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    document.getElementById('statusBar').textContent = 'Conectado a Supabase ✓';
-  } else {
-    document.getElementById('statusBar').textContent = 'Sin credenciales — modo demo';
-  }
-} catch(e) {
-  document.getElementById('statusBar').textContent = 'Error de conexión';
-  console.error(e);
+// ─────────────────────────────────────────────
+// 1. CREDENCIALES — Orden de prioridad:
+//    a) Variables inyectadas por Vercel en window (via _app.js o similar)
+//    b) localStorage guardado previamente
+//    c) Modal de configuración manual
+// ─────────────────────────────────────────────
+const LS_URL_KEY  = 'sb_url';
+const LS_KEY_KEY  = 'sb_key';
+
+function getCredenciales() {
+  // Intenta window.__env__ (si Vercel lo inyecta via script inline en el HTML)
+  var envUrl = (window.__env__ && window.__env__.SUPABASE_URL) ? window.__env__.SUPABASE_URL : '';
+  var envKey = (window.__env__ && window.__env__.SUPABASE_KEY) ? window.__env__.SUPABASE_KEY : '';
+
+  // Fallback a localStorage
+  var lsUrl = localStorage.getItem(LS_URL_KEY) || '';
+  var lsKey = localStorage.getItem(LS_KEY_KEY) || '';
+
+  return {
+    url: envUrl || lsUrl,
+    key: envKey || lsKey
+  };
 }
 
-// ============================================================
-// DATOS CONCEPTOS POR TIPO
-// ============================================================
-const CONCEPTOS = {
-  'Casa': ['Hipoteca','Seguro Hipoteca','Cuenta BNA','Expensas','Deuda 42,000 usd+cred','Pinturerias','Colchones','Reparaciones Casa','Otros...'],
-  'Comida': ['Verduleria','Panaderia /pastas / Hel','Pescado','Mayorista','Supermercados','Fiambres','Frutos secos','Carne / pollo','Otros...'],
-  'Muebles/Equipos': ['Electrodomesticos','Essen','Otros...'],
-  'Esparcimiento': ['Delibery / Salidas /Helados','Vacaciones','Otros...'],
-  'Medicamentos': ['Farmacias','Otros...'],
-  'Gasto animales': ['Comida Mishi y NINA','Otros...'],
-  'Movilidad P': ['Seguro Automovil','Combustible','Patente Auto','Neumaticos Calzzeta','Respuesto Auto','Autopista/estacionamiento','Otros...'],
-  'Movilidad NP': ['Movilidad extra/sube','Otros...'],
-  'Servicio AV': ['SpotiFy','Telecom','Otros...'],
-  'Servicios necesarios': ['Gastos de Alpe','Edenor','Gas','ABL','Monotributo','Otros...'],
-  'Impuestos varios': ['TC/Luz/Agua etc','Otros...'],
-  'Formaciones': ['Capacitaciones','Otros...'],
-  'Inversiones/Publi': ['Servicio inversiones','Insumos Pelo / cejas','Gastos tienda/ internet','Otros...'],
-  'Colegiatura': ['Colegio Lola','Otros...'],
-  'Regalos': ['Regalos','Otros...'],
-  'Bienestar': ['Gimnasio/pileta','Gasto Profesionales','Otros...'],
-  'Ropa/calzados': ['Zapatillas/botines','Ropa/vestimenta','Otros...'],
-  'Gastos extras': ['Gastos extras Meli','Gastos extras Javi','Gastos extras Lola','Otros...']
+function esURLValida(str) {
+  try { return str && str.startsWith('https://') && str.includes('.supabase.co'); }
+  catch(e) { return false; }
+}
+
+// ─────────────────────────────────────────────
+// 2. SUPABASE CLIENT
+// ─────────────────────────────────────────────
+var sbClient = null;
+
+function inicializarSupabase(url, key) {
+  try {
+    sbClient = window.supabase.createClient(url, key);
+    return true;
+  } catch(e) {
+    sbClient = null;
+    return false;
+  }
+}
+
+// ─────────────────────────────────────────────
+// 3. MODAL CREDENCIALES
+// ─────────────────────────────────────────────
+function abrirModalCreds() {
+  var creds = getCredenciales();
+  document.getElementById('credUrl').value = creds.url || '';
+  document.getElementById('credKey').value = creds.key || '';
+  document.getElementById('credError').style.display = 'none';
+  document.getElementById('modalCreds').style.display = 'flex';
+}
+
+function cerrarModalCreds() {
+  document.getElementById('modalCreds').style.display = 'none';
+}
+
+async function guardarCredenciales() {
+  var url = document.getElementById('credUrl').value.trim();
+  var key = document.getElementById('credKey').value.trim();
+
+  if (!url || !key) {
+    mostrarCredError('Completá ambos campos para continuar.');
+    return;
+  }
+  if (!esURLValida(url)) {
+    mostrarCredError('La URL no parece válida. Debe ser https://xxxx.supabase.co');
+    return;
+  }
+  if (key.length < 20) {
+    mostrarCredError('La Anon Key parece demasiado corta. Verificá que copiaste bien.');
+    return;
+  }
+
+  document.getElementById('credBtnText').textContent = 'Verificando...';
+  document.getElementById('credSpinner').style.display = 'inline-block';
+  document.getElementById('credError').style.display = 'none';
+
+  var ok = inicializarSupabase(url, key);
+  if (!ok) {
+    document.getElementById('credBtnText').textContent = 'Conectar y guardar';
+    document.getElementById('credSpinner').style.display = 'none';
+    mostrarCredError('No se pudo crear el cliente. Revisá las credenciales.');
+    return;
+  }
+
+  // Test real de conexión
+  try {
+    var resultado = await sbClient.from('movimientos_hogar').select('id').limit(1);
+    if (resultado.error) throw resultado.error;
+  } catch(e) {
+    document.getElementById('credBtnText').textContent = 'Conectar y guardar';
+    document.getElementById('credSpinner').style.display = 'none';
+    mostrarCredError('Error al conectar: ' + (e.message || e));
+    return;
+  }
+
+  // Todo OK → guardar en localStorage
+  localStorage.setItem(LS_URL_KEY, url);
+  localStorage.setItem(LS_KEY_KEY, key);
+
+  document.getElementById('credBtnText').textContent = 'Conectar y guardar';
+  document.getElementById('credSpinner').style.display = 'none';
+
+  cerrarModalCreds();
+  setStatus('Conectado a Supabase ✓', '#3fb950');
+  showToast('Conexión establecida y guardada ✓');
+  await cargarDatos();
+}
+
+function mostrarCredError(msg) {
+  document.getElementById('credErrorMsg').textContent = msg;
+  document.getElementById('credError').style.display = 'block';
+}
+
+// ─────────────────────────────────────────────
+// 4. ESTADO GLOBAL
+// ─────────────────────────────────────────────
+var allMovimientos = [];
+var allIngresos    = [];
+var chartActualInst = null;
+var chartFuturoInst = null;
+
+// ─────────────────────────────────────────────
+// 5. DATOS — CONCEPTOS
+// ─────────────────────────────────────────────
+var CONCEPTOS = {
+  'Casa':               ['Hipoteca','Seguro Hipoteca','Cuenta BNA','Expensas','Deuda 42,000 usd+cred','Pinturerias','Colchones','Reparaciones Casa','Otros...'],
+  'Comida':             ['Verduleria','Panaderia /pastas / Hel','Pescado','Mayorista','Supermercados','Fiambres','Frutos secos','Carne / pollo','Otros...'],
+  'Muebles/Equipos':    ['Electrodomesticos','Essen','Otros...'],
+  'Esparcimiento':      ['Delibery / Salidas /Helados','Vacaciones','Otros...'],
+  'Medicamentos':       ['Farmacias','Otros...'],
+  'Gasto animales':     ['Comida Mishi y NINA','Otros...'],
+  'Movilidad P':        ['Seguro Automovil','Combustible','Patente Auto','Neumaticos Calzzeta','Respuesto Auto','Autopista/estacionamiento','Otros...'],
+  'Movilidad NP':       ['Movilidad extra/sube','Otros...'],
+  'Servicio AV':        ['SpotiFy','Telecom','Otros...'],
+  'Servicios necesarios':['Gastos de Alpe','Edenor','Gas','ABL','Monotributo','Otros...'],
+  'Impuestos varios':   ['TC/Luz/Agua etc','Otros...'],
+  'Formaciones':        ['Capacitaciones','Otros...'],
+  'Inversiones/Publi':  ['Servicio inversiones','Insumos Pelo / cejas','Gastos tienda/ internet','Otros...'],
+  'Colegiatura':        ['Colegio Lola','Otros...'],
+  'Regalos':            ['Regalos','Otros...'],
+  'Bienestar':          ['Gimnasio/pileta','Gasto Profesionales','Otros...'],
+  'Ropa/calzados':      ['Zapatillas/botines','Ropa/vestimenta','Otros...'],
+  'Gastos extras':      ['Gastos extras Meli','Gastos extras Javi','Gastos extras Lola','Otros...']
 };
 
-const CONCEPTOS_INGRESO = {
-  'Ingresos Javi': ['Salario','Alpe Ingenieria','Venta','Financiera de activos'],
-  'Ingresos Meli': ['Salario','Venta','Financiera de activos'],
-  'Ingresos extras': ['Venta','Financiera de activos','Otros'],
+var CONCEPTOS_INGRESO = {
+  'Ingresos Javi':     ['Salario','Alpe Ingenieria','Venta','Financiera de activos'],
+  'Ingresos Meli':     ['Salario','Venta','Financiera de activos'],
+  'Ingresos extras':   ['Venta','Financiera de activos','Otros'],
   'Impuestos salario': ['Jubilación','Ganancias','O social']
 };
 
-// ============================================================
-// ESTADO GLOBAL
-// ============================================================
-let allMovimientos = [];
-let allIngresos = [];
-let chartActualInst = null;
-let chartFuturoInst = null;
-let activeTab = 'dashboard';
-
-// ============================================================
-// UTILIDADES
-// ============================================================
+// ─────────────────────────────────────────────
+// 6. UTILIDADES
+// ─────────────────────────────────────────────
 function fmt(n) {
   return '$' + Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 function fmtFecha(str) {
   if (!str) return '';
-  const d = new Date(str + 'T12:00:00');
+  var d = new Date(str + 'T12:00:00');
   return d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' });
 }
 
-function showToast(msg, type) {
-  const t = document.getElementById('toast');
+function showToast(msg, tipo) {
+  var t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast ' + (type || 'success') + ' show';
-  setTimeout(() => { t.className = 'toast'; }, 3200);
+  t.className = 'toast ' + (tipo || 'success') + ' show';
+  setTimeout(function() { t.className = 'toast'; }, 3200);
 }
 
-function getNow() { return new Date(); }
+function setStatus(msg, color) {
+  var el = document.getElementById('statusBar');
+  el.textContent = msg;
+  el.style.color = color || '#8b949e';
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
 
 function getFiltroDates() {
-  const filtro = document.getElementById('globalFilter').value;
-  const now = getNow();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  let desde, hasta;
+  var filtro = document.getElementById('globalFilter').value;
+  var now = new Date();
+  var y = now.getFullYear();
+  var m = now.getMonth();
+  var desde, hasta;
   if (filtro === 'mes_actual' || filtro === 'mes_proyectado') {
     desde = new Date(y, m, 1);
     hasta = new Date(y, m + 1, 0);
@@ -442,167 +616,179 @@ function getFiltroDates() {
     desde = new Date(y, 0, 1);
     hasta = new Date(y, 11, 31);
   }
-  return { desde, hasta, filtro };
+  return { desde: desde, hasta: hasta, filtro: filtro };
 }
 
 function enRango(fechaStr, desde, hasta) {
-  const d = new Date(fechaStr + 'T12:00:00');
+  var d = new Date(fechaStr + 'T12:00:00');
   return d >= desde && d <= hasta;
 }
 
-function todayStr() {
-  const d = new Date();
-  return d.toISOString().split('T')[0];
-}
-
-// ============================================================
-// TAB NAVIGATION
-// ============================================================
+// ─────────────────────────────────────────────
+// 7. TABS
+// ─────────────────────────────────────────────
 function showTab(tab) {
-  activeTab = tab;
-  ['dashboard','gastos','ingresos','movimientos'].forEach(t => {
+  var tabs = ['dashboard','gastos','ingresos','movimientos'];
+  tabs.forEach(function(t) {
     document.getElementById('tab-' + t).style.display = (t === tab) ? '' : 'none';
   });
-  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-    const tabs = ['dashboard','gastos','ingresos','movimientos'];
+  document.querySelectorAll('.tab-btn').forEach(function(btn, i) {
     btn.classList.toggle('active', tabs[i] === tab);
   });
-  const cfg = document.getElementById('configProyeccion');
-  cfg.style.display = (tab === 'dashboard') ? '' : 'none';
   if (tab === 'dashboard' || tab === 'movimientos') renderAll();
 }
 
-// ============================================================
-// CONCEPTOS DINÁMICOS
-// ============================================================
+// ─────────────────────────────────────────────
+// 8. CONCEPTOS DINÁMICOS
+// ─────────────────────────────────────────────
 function actualizarConceptos() {
-  const tipo = document.getElementById('g-tipo').value;
-  const sel = document.getElementById('g-concepto');
-  sel.innerHTML = '';
+  var tipo = document.getElementById('g-tipo').value;
+  var sel  = document.getElementById('g-concepto');
   document.getElementById('g-otros-wrap').style.display = 'none';
   document.getElementById('g-otros-texto').value = '';
+
   if (!tipo || !CONCEPTOS[tipo]) {
     sel.innerHTML = '<option value="">Primero seleccionar tipo...</option>';
     return;
   }
   sel.innerHTML = '<option value="">Seleccionar concepto...</option>';
-  CONCEPTOS[tipo].forEach(c => {
-    const o = document.createElement('option');
+  CONCEPTOS[tipo].forEach(function(c) {
+    var o = document.createElement('option');
     o.value = c; o.textContent = c;
     sel.appendChild(o);
   });
 }
 
 function checkOtros() {
-  const val = document.getElementById('g-concepto').value;
+  var val = document.getElementById('g-concepto').value;
   document.getElementById('g-otros-wrap').style.display = (val === 'Otros...') ? '' : 'none';
   if (val !== 'Otros...') document.getElementById('g-otros-texto').value = '';
 }
 
 function actualizarConceptosIngreso() {
-  const cat = document.getElementById('i-categoria').value;
-  const sel = document.getElementById('i-concepto');
-  sel.innerHTML = '';
+  var cat = document.getElementById('i-categoria').value;
+  var sel = document.getElementById('i-concepto');
   if (!cat || !CONCEPTOS_INGRESO[cat]) {
     sel.innerHTML = '<option value="">Primero seleccionar categoría...</option>';
     return;
   }
   sel.innerHTML = '<option value="">Seleccionar concepto...</option>';
-  CONCEPTOS_INGRESO[cat].forEach(c => {
-    const o = document.createElement('option');
+  CONCEPTOS_INGRESO[cat].forEach(function(c) {
+    var o = document.createElement('option');
     o.value = c; o.textContent = c;
     sel.appendChild(o);
   });
 }
 
-// ============================================================
-// GUARDAR GASTO
-// ============================================================
+// ─────────────────────────────────────────────
+// 9. GUARDAR GASTO
+// ─────────────────────────────────────────────
 async function guardarGasto() {
-  const fecha = document.getElementById('g-fecha').value;
-  const fijo = document.getElementById('g-fijo').value;
-  const necesario = document.getElementById('g-necesario').value;
-  const tipo = document.getElementById('g-tipo').value;
-  const conceptoSel = document.getElementById('g-concepto').value;
-  const otrosTexto = document.getElementById('g-otros-texto').value.trim();
-  const montoPesos = parseFloat(document.getElementById('g-monto-pesos').value) || 0;
-  const montoUSD = parseFloat(document.getElementById('g-monto-usd').value) || 0;
-  const estado = document.getElementById('g-estado').value;
-
-  const concepto = (conceptoSel === 'Otros...' && otrosTexto) ? otrosTexto : conceptoSel;
+  var fecha       = document.getElementById('g-fecha').value;
+  var fijo        = document.getElementById('g-fijo').value;
+  var necesario   = document.getElementById('g-necesario').value;
+  var tipo        = document.getElementById('g-tipo').value;
+  var conceptoSel = document.getElementById('g-concepto').value;
+  var otrosTexto  = document.getElementById('g-otros-texto').value.trim();
+  var montoPesos  = parseFloat(document.getElementById('g-monto-pesos').value) || 0;
+  var montoUSD    = parseFloat(document.getElementById('g-monto-usd').value)   || 0;
+  var estado      = document.getElementById('g-estado').value;
+  var concepto    = (conceptoSel === 'Otros...' && otrosTexto) ? otrosTexto : conceptoSel;
 
   if (!fecha || !fijo || !necesario || !tipo || !conceptoSel || montoPesos <= 0) {
-    showToast('Por favor completá todos los campos obligatorios', 'error'); return;
+    showToast('Completá todos los campos obligatorios', 'error'); return;
   }
   if (conceptoSel === 'Otros...' && !otrosTexto) {
     showToast('Escribí el concepto en el campo "Otros"', 'error'); return;
   }
 
-  const row = { fecha, tipo_movimiento: 'gasto', fijo, necesario, tipo_gasto: tipo, concepto, monto_pesos: montoPesos, monto_usd: montoUSD || null, estado };
+  var row = {
+    fecha: fecha,
+    tipo_movimiento: 'gasto',
+    fijo: fijo,
+    necesario: necesario,
+    tipo_gasto: tipo,
+    concepto: concepto,
+    monto_pesos: montoPesos,
+    monto_usd: montoUSD || null,
+    estado: estado
+  };
 
-  document.getElementById('btnGastoText').style.display = 'none';
+  document.getElementById('btnGastoText').style.display  = 'none';
   document.getElementById('btnGastoSpinner').style.display = 'inline-block';
 
   try {
-    if (supabase) {
-      const { error } = await supabase.from('movimientos_hogar').insert([row]);
-      if (error) throw error;
+    if (sbClient) {
+      var res = await sbClient.from('movimientos_hogar').insert([row]).select();
+      if (res.error) throw res.error;
+      if (res.data && res.data[0]) allMovimientos.unshift(res.data[0]);
+      else allMovimientos.unshift(Object.assign({ id: Date.now() }, row));
+    } else {
+      allMovimientos.unshift(Object.assign({ id: Date.now() }, row));
     }
-    allMovimientos.push({ ...row, id: Date.now() });
-    showToast('Gasto guardado correctamente ✓');
+    showToast('Gasto guardado ✓');
     limpiarFormGasto();
     renderAll();
   } catch(e) {
-    showToast('Error al guardar: ' + e.message, 'error');
+    showToast('Error: ' + e.message, 'error');
   } finally {
-    document.getElementById('btnGastoText').style.display = '';
+    document.getElementById('btnGastoText').style.display    = '';
     document.getElementById('btnGastoSpinner').style.display = 'none';
   }
 }
 
-// ============================================================
-// GUARDAR INGRESO
-// ============================================================
+// ─────────────────────────────────────────────
+// 10. GUARDAR INGRESO
+// ─────────────────────────────────────────────
 async function guardarIngreso() {
-  const fecha = document.getElementById('i-fecha').value;
-  const categoria = document.getElementById('i-categoria').value;
-  const concepto = document.getElementById('i-concepto').value;
-  const monto = parseFloat(document.getElementById('i-monto').value) || 0;
+  var fecha     = document.getElementById('i-fecha').value;
+  var categoria = document.getElementById('i-categoria').value;
+  var concepto  = document.getElementById('i-concepto').value;
+  var monto     = parseFloat(document.getElementById('i-monto').value) || 0;
 
   if (!fecha || !categoria || !concepto || monto <= 0) {
     showToast('Completá todos los campos', 'error'); return;
   }
 
-  const row = { fecha, tipo_movimiento: 'ingreso', categoria_ingreso: categoria, concepto, monto_pesos: monto };
+  var row = {
+    fecha: fecha,
+    tipo_movimiento: 'ingreso',
+    categoria_ingreso: categoria,
+    concepto: concepto,
+    monto_pesos: monto
+  };
 
-  document.getElementById('btnIngresoText').style.display = 'none';
+  document.getElementById('btnIngresoText').style.display    = 'none';
   document.getElementById('btnIngresoSpinner').style.display = 'inline-block';
 
   try {
-    if (supabase) {
-      const { error } = await supabase.from('movimientos_hogar').insert([row]);
-      if (error) throw error;
+    if (sbClient) {
+      var res = await sbClient.from('movimientos_hogar').insert([row]).select();
+      if (res.error) throw res.error;
+      if (res.data && res.data[0]) allIngresos.unshift(res.data[0]);
+      else allIngresos.unshift(Object.assign({ id: Date.now() }, row));
+    } else {
+      allIngresos.unshift(Object.assign({ id: Date.now() }, row));
     }
-    allIngresos.push({ ...row, id: Date.now() });
-    showToast('Ingreso guardado correctamente ✓');
+    showToast('Ingreso guardado ✓');
     limpiarFormIngreso();
     renderAll();
   } catch(e) {
-    showToast('Error al guardar: ' + e.message, 'error');
+    showToast('Error: ' + e.message, 'error');
   } finally {
-    document.getElementById('btnIngresoText').style.display = '';
+    document.getElementById('btnIngresoText').style.display    = '';
     document.getElementById('btnIngresoSpinner').style.display = 'none';
   }
 }
 
-// ============================================================
-// LIMPIAR FORMULARIOS
-// ============================================================
+// ─────────────────────────────────────────────
+// 11. LIMPIAR FORMULARIOS
+// ─────────────────────────────────────────────
 function limpiarFormGasto() {
-  ['g-fecha','g-fijo','g-necesario','g-tipo','g-monto-pesos','g-monto-usd'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
+  ['g-fijo','g-necesario','g-tipo','g-monto-pesos','g-monto-usd'].forEach(function(id) {
+    document.getElementById(id).value = '';
   });
+  document.getElementById('g-fecha').value  = todayStr();
   document.getElementById('g-estado').value = 'ejecutado';
   document.getElementById('g-concepto').innerHTML = '<option value="">Primero seleccionar tipo...</option>';
   document.getElementById('g-otros-wrap').style.display = 'none';
@@ -610,27 +796,27 @@ function limpiarFormGasto() {
 }
 
 function limpiarFormIngreso() {
-  ['i-fecha','i-categoria','i-monto'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
+  ['i-categoria','i-monto'].forEach(function(id) {
+    document.getElementById(id).value = '';
   });
+  document.getElementById('i-fecha').value   = todayStr();
   document.getElementById('i-concepto').innerHTML = '<option value="">Primero seleccionar categoría...</option>';
 }
 
-// ============================================================
-// ELIMINAR MOVIMIENTO
-// ============================================================
+// ─────────────────────────────────────────────
+// 12. ELIMINAR
+// ─────────────────────────────────────────────
 async function eliminarMovimiento(id, tipo) {
   if (!confirm('¿Eliminar este movimiento?')) return;
   try {
-    if (supabase) {
-      const { error } = await supabase.from('movimientos_hogar').delete().eq('id', id);
-      if (error) throw error;
+    if (sbClient) {
+      var res = await sbClient.from('movimientos_hogar').delete().eq('id', id);
+      if (res.error) throw res.error;
     }
     if (tipo === 'ingreso') {
-      allIngresos = allIngresos.filter(r => r.id !== id);
+      allIngresos = allIngresos.filter(function(r) { return r.id !== id; });
     } else {
-      allMovimientos = allMovimientos.filter(r => r.id !== id);
+      allMovimientos = allMovimientos.filter(function(r) { return r.id !== id; });
     }
     showToast('Eliminado');
     renderAll();
@@ -639,189 +825,181 @@ async function eliminarMovimiento(id, tipo) {
   }
 }
 
-// ============================================================
-// CARGAR DATOS DESDE SUPABASE
-// ============================================================
+// ─────────────────────────────────────────────
+// 13. CARGAR DATOS DESDE SUPABASE
+// ─────────────────────────────────────────────
 async function cargarDatos() {
-  if (!supabase) return;
+  if (!sbClient) { renderAll(); return; }
+  setStatus('Cargando datos...', '#8b949e');
   try {
-    const { data, error } = await supabase
+    var res = await sbClient
       .from('movimientos_hogar')
       .select('*')
       .order('fecha', { ascending: false });
-    if (error) throw error;
-    allMovimientos = (data || []).filter(r => r.tipo_movimiento === 'gasto');
-    allIngresos = (data || []).filter(r => r.tipo_movimiento === 'ingreso');
+    if (res.error) throw res.error;
+    var data = res.data || [];
+    allMovimientos = data.filter(function(r) { return r.tipo_movimiento === 'gasto'; });
+    allIngresos    = data.filter(function(r) { return r.tipo_movimiento === 'ingreso'; });
+    setStatus('Conectado · ' + data.length + ' registros', '#3fb950');
     renderAll();
   } catch(e) {
+    setStatus('Error al cargar datos', '#f85149');
     showToast('Error cargando datos: ' + e.message, 'error');
   }
 }
 
-// ============================================================
-// RENDER ALL
-// ============================================================
+// ─────────────────────────────────────────────
+// 14. RENDER ALL
+// ─────────────────────────────────────────────
 function renderAll() {
-  const { desde, hasta, filtro } = getFiltroDates();
+  var fd = getFiltroDates();
+  var desde = fd.desde, hasta = fd.hasta, filtro = fd.filtro;
 
-  // Filtrar
-  const gastosFiltrados = allMovimientos.filter(r => enRango(r.fecha, desde, hasta));
-  const ingresosFiltrados = allIngresos.filter(r => enRango(r.fecha, desde, hasta));
+  var gastosFiltrados  = allMovimientos.filter(function(r) { return enRango(r.fecha, desde, hasta); });
+  var ingresosFiltrados = allIngresos.filter(function(r)   { return enRango(r.fecha, desde, hasta); });
 
-  const ejecutados = gastosFiltrados.filter(r => r.estado === 'ejecutado' || !r.estado);
-  const proyectados = gastosFiltrados.filter(r => r.estado === 'proyectado');
+  var ejecutados  = gastosFiltrados.filter(function(r) { return r.estado === 'ejecutado' || !r.estado; });
+  var proyectados = gastosFiltrados.filter(function(r) { return r.estado === 'proyectado'; });
 
-  // Gastos proyectados automáticos
-  const inflacion = parseFloat(document.getElementById('inflacionEstimada').value) || 0;
-  const cuotaUVABase = parseFloat(document.getElementById('cuotaUVABase').value) || 0;
-  const deudaAlej = parseFloat(document.getElementById('deudaAlejandro').value) || 0;
-  const cuotaUVAProyectada = cuotaUVABase * (1 + inflacion / 100);
+  var inflacion        = parseFloat(document.getElementById('inflacionEstimada').value) || 0;
+  var cuotaUVABase     = parseFloat(document.getElementById('cuotaUVABase').value)      || 0;
+  var deudaAlej        = parseFloat(document.getElementById('deudaAlejandro').value)    || 0;
+  var cuotaUVAProyect  = cuotaUVABase * (1 + inflacion / 100);
 
-  // Totales
-  const totalEjecutado = ejecutados.reduce((s, r) => s + (r.monto_pesos || 0), 0);
-  const totalProyectadoManual = proyectados.reduce((s, r) => s + (r.monto_pesos || 0), 0);
-  const gastosAuto = cuotaUVAProyectada + deudaAlej;
-  const totalProyectado = totalProyectadoManual + gastosAuto;
+  var totalEjecutado       = ejecutados.reduce(function(s,r) { return s + (r.monto_pesos||0); }, 0);
+  var totalProyectManual   = proyectados.reduce(function(s,r){ return s + (r.monto_pesos||0); }, 0);
+  var gastosAuto           = cuotaUVAProyect + deudaAlej;
+  var totalProyectado      = totalProyectManual + gastosAuto;
 
-  let totalGastos = totalEjecutado;
-  if (filtro === 'mes_proyectado') totalGastos = totalEjecutado + totalProyectado;
+  var totalGastos  = (filtro === 'mes_proyectado') ? (totalEjecutado + totalProyectado) : totalEjecutado;
+  var totalIngresos = ingresosFiltrados.reduce(function(s,r) { return s + (r.monto_pesos||0); }, 0);
 
-  const totalIngresos = ingresosFiltrados.reduce((s, r) => s + (r.monto_pesos || 0), 0);
+  var impuestos = ingresosFiltrados
+    .filter(function(r) { return r.categoria_ingreso === 'Impuestos salario'; })
+    .reduce(function(s,r) { return s + (r.monto_pesos||0); }, 0);
 
-  // Impuestos (Jubilación, Ganancias, O social)
-  const impuestos = ingresosFiltrados
-    .filter(r => r.categoria_ingreso === 'Impuestos salario')
-    .reduce((s, r) => s + (r.monto_pesos || 0), 0);
+  var salarioNeto = totalIngresos - impuestos;
+  var ahorro      = totalIngresos - totalGastos;
+  var ahorroPct   = totalIngresos > 0 ? ((ahorro / totalIngresos) * 100).toFixed(1) : 0;
+  var noNecesario = ejecutados
+    .filter(function(r) { return r.necesario === 'No necesario'; })
+    .reduce(function(s,r) { return s + (r.monto_pesos||0); }, 0);
 
-  const salarioNeto = totalIngresos - impuestos;
-  const ahorro = totalIngresos - totalGastos;
-  const ahorroPct = totalIngresos > 0 ? ((ahorro / totalIngresos) * 100).toFixed(1) : 0;
-  const noNecesario = ejecutados.filter(r => r.necesario === 'No necesario').reduce((s, r) => s + (r.monto_pesos || 0), 0);
-
-  // Cards
   document.getElementById('cardIngresos').textContent = fmt(totalIngresos);
-  document.getElementById('cardGastos').textContent = fmt(totalGastos);
-  const cardAhorro = document.getElementById('cardAhorro');
+  document.getElementById('cardGastos').textContent   = fmt(totalGastos);
+  var cardAhorro = document.getElementById('cardAhorro');
   cardAhorro.textContent = fmt(ahorro);
   cardAhorro.className = 'text-xl font-bold font-mono ' + (ahorro >= 0 ? 'text-green-400' : 'text-red-400');
   document.getElementById('cardAhorroPct').textContent = ahorroPct + '% del ingreso';
-  document.getElementById('cardSalario').textContent = fmt(salarioNeto);
-  document.getElementById('cardNoNec').textContent = fmt(noNecesario);
+  document.getElementById('cardSalario').textContent   = fmt(salarioNeto);
+  document.getElementById('cardNoNec').textContent     = fmt(noNecesario);
 
   // Compromisos automáticos
-  const listaAuto = document.getElementById('listaCompromisosAuto');
+  var lauto = document.getElementById('listaCompromisosAuto');
   if (cuotaUVABase > 0 || deudaAlej > 0) {
-    let html = '';
-    if (cuotaUVABase > 0) html += `<div class="flex justify-between"><span>Cuota UVA (+${inflacion}%)</span><span class="font-mono text-blue-300">${fmt(cuotaUVAProyectada)}</span></div>`;
-    if (deudaAlej > 0) html += `<div class="flex justify-between"><span>Deuda Alejandro (400 USD)</span><span class="font-mono text-blue-300">${fmt(deudaAlej)}</span></div>`;
-    listaAuto.innerHTML = html;
+    var html = '';
+    if (cuotaUVABase > 0) html += '<div class="flex justify-between"><span>Cuota UVA (+' + inflacion + '%)</span><span class="font-mono" style="color:#79c0ff;">' + fmt(cuotaUVAProyect) + '</span></div>';
+    if (deudaAlej > 0)    html += '<div class="flex justify-between"><span>Deuda Alejandro (400 USD)</span><span class="font-mono" style="color:#79c0ff;">' + fmt(deudaAlej) + '</span></div>';
+    lauto.innerHTML = html;
   } else {
-    listaAuto.innerHTML = '<p class="text-gray-500">Configura en Dashboard para ver proyección</p>';
+    lauto.innerHTML = '<p class="text-gray-500">Configura en Dashboard para ver proyección</p>';
   }
 
-  // Listas de movimientos
-  renderLista('listaEjecutados', ejecutados, 'gasto');
-  renderLista('listaProyectados', proyectados, 'gasto');
-  renderLista('listaIngresos', ingresosFiltrados, 'ingreso');
+  renderLista('listaEjecutados',  ejecutados,        'gasto');
+  renderLista('listaProyectados', proyectados,       'gasto');
+  renderLista('listaIngresos',    ingresosFiltrados, 'ingreso');
 
-  document.getElementById('countEjecutados').textContent = ejecutados.length;
+  document.getElementById('countEjecutados').textContent  = ejecutados.length;
   document.getElementById('countProyectados').textContent = proyectados.length;
-  document.getElementById('countIngresos').textContent = ingresosFiltrados.length;
+  document.getElementById('countIngresos').textContent    = ingresosFiltrados.length;
 
-  // Gráficos
-  renderCharts(ejecutados, proyectados, cuotaUVAProyectada, deudaAlej);
+  renderCharts(ejecutados, proyectados, cuotaUVAProyect, deudaAlej);
 }
 
-// ============================================================
-// RENDER LISTA
-// ============================================================
+// ─────────────────────────────────────────────
+// 15. RENDER LISTA
+// ─────────────────────────────────────────────
 function renderLista(containerId, items, tipo) {
-  const el = document.getElementById(containerId);
+  var el = document.getElementById(containerId);
   if (!items || items.length === 0) {
     el.innerHTML = '<p class="text-gray-500 text-sm text-center py-6">Sin datos para este período</p>';
     return;
   }
-  el.innerHTML = items.map(r => {
-    const esTipo = tipo === 'ingreso';
-    const concepto = r.concepto || '—';
-    const categoria = esTipo ? (r.categoria_ingreso || '') : (r.tipo_gasto || '');
-    const pillClass = esTipo ? 'pill-green' : (r.necesario === 'No necesario' ? 'pill-yellow' : 'pill-blue');
-    const montoColor = esTipo ? 'text-green-400' : 'text-red-400';
-    const signo = esTipo ? '+' : '-';
-    return `<div class="flex items-start gap-2 p-2 rounded-lg hover:bg-surface-700 transition-colors" style="background:#21262d10;border:1px solid #30363d20;">
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-xs font-mono text-gray-400">${fmtFecha(r.fecha)}</span>
-          <span class="pill ${pillClass} truncate max-w-28">${categoria}</span>
-          ${r.fijo ? `<span class="pill" style="background:#8b949e22;color:#8b949e">${r.fijo}</span>` : ''}
-        </div>
-        <p class="text-sm mt-0.5 truncate">${concepto}</p>
-      </div>
-      <div class="text-right flex-shrink-0">
-        <p class="font-mono font-bold text-sm ${montoColor}">${signo}${fmt(r.monto_pesos)}</p>
-        ${r.monto_usd ? `<p class="text-xs text-gray-500 font-mono">USD ${r.monto_usd}</p>` : ''}
-        <button class="btn-danger mt-1" onclick="eliminarMovimiento(${r.id}, '${tipo}')">✕</button>
-      </div>
-    </div>`;
+  el.innerHTML = items.map(function(r) {
+    var esIngreso  = (tipo === 'ingreso');
+    var concepto   = r.concepto || '—';
+    var categoria  = esIngreso ? (r.categoria_ingreso || '') : (r.tipo_gasto || '');
+    var pillClass  = esIngreso ? 'pill-green' : (r.necesario === 'No necesario' ? 'pill-yellow' : 'pill-blue');
+    var montoColor = esIngreso ? 'color:#3fb950' : 'color:#f85149';
+    var signo      = esIngreso ? '+' : '-';
+    var fijoTag    = (!esIngreso && r.fijo) ? '<span class="pill" style="background:#8b949e22;color:#8b949e;">' + r.fijo + '</span>' : '';
+    return '<div class="flex items-start gap-2 p-2 rounded-lg" style="background:#21262d18;border:1px solid #30363d20;margin-bottom:4px;">'
+      + '<div style="flex:1;min-width:0;">'
+      +   '<div class="flex items-center gap-2 flex-wrap">'
+      +     '<span class="text-xs font-mono" style="color:#8b949e;">' + fmtFecha(r.fecha) + '</span>'
+      +     '<span class="pill ' + pillClass + '" style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + categoria + '</span>'
+      +     fijoTag
+      +   '</div>'
+      +   '<p style="font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + concepto + '</p>'
+      + '</div>'
+      + '<div style="text-align:right;flex-shrink:0;">'
+      +   '<p class="font-mono font-bold" style="font-size:13px;' + montoColor + '">' + signo + fmt(r.monto_pesos) + '</p>'
+      +   (r.monto_usd ? '<p style="font-size:11px;color:#8b949e;font-family:monospace;">USD ' + r.monto_usd + '</p>' : '')
+      +   '<button class="btn-danger" style="margin-top:4px;" onclick="eliminarMovimiento(' + r.id + ', \'' + tipo + '\')">✕</button>'
+      + '</div>'
+      + '</div>';
   }).join('');
 }
 
-// ============================================================
-// RENDER CHARTS
-// ============================================================
-const CHART_COLORS = [
+// ─────────────────────────────────────────────
+// 16. GRÁFICOS
+// ─────────────────────────────────────────────
+var CHART_COLORS = [
   '#58a6ff','#3fb950','#f85149','#d29922','#bc8cff',
   '#ff7b72','#79c0ff','#56d364','#ffa657','#e3b341',
   '#89d4f5','#ff9492','#b392f0','#7ee787','#ffdcd7'
 ];
 
 function renderCharts(ejecutados, proyectados, cuotaUVA, deudaAlej) {
-  // Agrupar por tipo_gasto
-  const agruparPorTipo = (arr) => {
-    const map = {};
-    arr.forEach(r => {
-      const k = r.tipo_gasto || 'Otros';
-      map[k] = (map[k] || 0) + (r.monto_pesos || 0);
-    });
-    return map;
-  };
+  var grupoActual = {};
+  ejecutados.forEach(function(r) {
+    var k = r.tipo_gasto || 'Otros';
+    grupoActual[k] = (grupoActual[k] || 0) + (r.monto_pesos || 0);
+  });
 
-  const grupoActual = agruparPorTipo(ejecutados);
-  const grupoFuturo = { ...agruparPorTipo(ejecutados) };
-
-  // Agregar proyectados
-  proyectados.forEach(r => {
-    const k = r.tipo_gasto || 'Otros';
+  var grupoFuturo = {};
+  Object.keys(grupoActual).forEach(function(k) { grupoFuturo[k] = grupoActual[k]; });
+  proyectados.forEach(function(r) {
+    var k = r.tipo_gasto || 'Otros';
     grupoFuturo[k] = (grupoFuturo[k] || 0) + (r.monto_pesos || 0);
   });
-  if (cuotaUVA > 0) grupoFuturo['Casa'] = (grupoFuturo['Casa'] || 0) + cuotaUVA;
-  if (deudaAlej > 0) grupoFuturo['Casa'] = (grupoFuturo['Casa'] || 0) + deudaAlej;
+  if (cuotaUVA   > 0) grupoFuturo['Casa'] = (grupoFuturo['Casa'] || 0) + cuotaUVA;
+  if (deudaAlej  > 0) grupoFuturo['Casa'] = (grupoFuturo['Casa'] || 0) + deudaAlej;
 
-  buildDonut('chartActual', 'chartActualEmpty', grupoActual);
-  buildDonut('chartFuturo', 'chartFuturoEmpty', grupoFuturo);
+  buildDonut('chartActual', 'chartActualEmpty', grupoActual, 'chartActualInst');
+  buildDonut('chartFuturo', 'chartFuturoEmpty', grupoFuturo, 'chartFuturoInst');
 }
 
-function buildDonut(canvasId, emptyId, data) {
-  const canvas = document.getElementById(canvasId);
-  const emptyEl = document.getElementById(emptyId);
-  const keys = Object.keys(data).filter(k => data[k] > 0);
+function buildDonut(canvasId, emptyId, data, instKey) {
+  var canvas  = document.getElementById(canvasId);
+  var emptyEl = document.getElementById(emptyId);
+  var keys    = Object.keys(data).filter(function(k) { return data[k] > 0; });
 
   if (keys.length === 0) {
-    canvas.style.display = 'none';
+    canvas.style.display  = 'none';
     emptyEl.style.display = '';
     return;
   }
-  canvas.style.display = '';
+  canvas.style.display  = '';
   emptyEl.style.display = 'none';
 
-  const values = keys.map(k => data[k]);
-  const total = values.reduce((a, b) => a + b, 0);
+  if (instKey === 'chartActualInst' && chartActualInst) { chartActualInst.destroy(); chartActualInst = null; }
+  if (instKey === 'chartFuturoInst' && chartFuturoInst) { chartFuturoInst.destroy(); chartFuturoInst = null; }
 
-  // Destruir instancia anterior si existe
-  if (canvasId === 'chartActual' && chartActualInst) { chartActualInst.destroy(); chartActualInst = null; }
-  if (canvasId === 'chartFuturo' && chartFuturoInst) { chartFuturoInst.destroy(); chartFuturoInst = null; }
+  var values = keys.map(function(k) { return data[k]; });
+  var total  = values.reduce(function(a,b) { return a+b; }, 0);
 
-  const inst = new Chart(canvas, {
+  var inst = new Chart(canvas, {
     type: 'doughnut',
     data: {
       labels: keys,
@@ -839,14 +1017,14 @@ function buildDonut(canvasId, emptyId, data) {
       plugins: {
         legend: {
           position: 'bottom',
-          labels: { color: '#8b949e', font: { size: 11 }, padding: 12, boxWidth: 12 }
+          labels: { color: '#8b949e', font: { size: 11 }, padding: 10, boxWidth: 12 }
         },
         tooltip: {
           callbacks: {
             label: function(ctx) {
-              const val = ctx.parsed;
-              const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
-              return ` ${ctx.label}: ${fmt(val)} (${pct}%)`;
+              var val = ctx.parsed;
+              var pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+              return ' ' + ctx.label + ': ' + fmt(val) + ' (' + pct + '%)';
             }
           }
         }
@@ -854,33 +1032,57 @@ function buildDonut(canvasId, emptyId, data) {
     }
   });
 
-  if (canvasId === 'chartActual') chartActualInst = inst;
+  if (instKey === 'chartActualInst') chartActualInst = inst;
   else chartFuturoInst = inst;
 }
 
-// ============================================================
-// RECALCULAR (BOTÓN)
-// ============================================================
+// ─────────────────────────────────────────────
+// 17. RECALCULAR
+// ─────────────────────────────────────────────
 function recalcular() { renderAll(); showToast('Proyección recalculada'); }
 
-// ============================================================
-// EVENTO FILTRO GLOBAL
-// ============================================================
+// ─────────────────────────────────────────────
+// 18. EVENTO FILTRO GLOBAL
+// ─────────────────────────────────────────────
 document.getElementById('globalFilter').addEventListener('change', renderAll);
 
-// ============================================================
-// INIT
-// ============================================================
-window.addEventListener('DOMContentLoaded', () => {
-  // Fecha hoy por defecto
+// ─────────────────────────────────────────────
+// 19. ARRANQUE
+// ─────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('g-fecha').value = todayStr();
   document.getElementById('i-fecha').value = todayStr();
 
-  // Panel config siempre visible en dashboard
-  document.getElementById('configProyeccion').style.display = '';
+  var creds = getCredenciales();
 
-  cargarDatos();
+  if (creds.url && creds.key) {
+    // Tenemos credenciales guardadas o inyectadas → intentar conectar
+    setStatus('Conectando...', '#8b949e');
+    var ok = inicializarSupabase(creds.url, creds.key);
+    if (ok) {
+      try {
+        var res = await sbClient.from('movimientos_hogar').select('id').limit(1);
+        if (res.error) throw res.error;
+        setStatus('Conectado a Supabase ✓', '#3fb950');
+        await cargarDatos();
+      } catch(e) {
+        // Credenciales guardadas pero fallan → pedir de nuevo
+        setStatus('Credenciales inválidas', '#f85149');
+        abrirModalCreds();
+      }
+    } else {
+      abrirModalCreds();
+    }
+  } else {
+    // Sin credenciales → mostrar modal de configuración
+    setStatus('Sin configurar', '#d29922');
+    abrirModalCreds();
+  }
 });
 </script>
 </body>
 </html>
+
+
+
+

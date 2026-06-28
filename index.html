@@ -148,14 +148,16 @@
                         <canvas id="chartGastos"></canvas>
                     </div>
                 </div>
-                <div class="bg-darkCard p-4 rounded-2xl border border-slate-800 flex flex-col justify-center">
-                    <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Resumen Operativo</h4>
-                    <div class="space-y-4 text-sm" id="resumen-texto-dashboard"></div>
+                <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 flex flex-col justify-start">
+                    <h4 class="text-sm font-bold text-slate-300 mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-receipt text-cyan-400"></i> Resumen Operativo Financiero
+                    </h4>
+                    <div class="space-y-3.5 text-xs sm:text-sm" id="resumen-texto-dashboard"></div>
                 </div>
             </div>
         </div>
 
-        <!-- PESTAÑA 2: CARGAR GASTO (CON PLANIFICADOR DE CUOTAS) -->
+        <!-- PESTAÑA 2: CARGAR GASTO -->
         <div id="tab-gasto" class="tab-content hidden">
             <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 max-w-3xl mx-auto">
                 <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-rose-400">
@@ -214,7 +216,6 @@
                         </select>
                     </div>
 
-                    <!-- NUEVOS CAMPOS EXCLUSIVOS PARA DIVIDIR EN CUOTAS -->
                     <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold mb-1 text-blue-400">¿Dividir en cuotas fijas?</label>
@@ -449,12 +450,8 @@
             } catch (err) { console.error(err); }
         }
 
-        // ==========================================
-        // MOTOR INTELIGENTE DE GENERACIÓN DE CUOTAS
-        // ==========================================
         async function guardarGasto(e) {
             e.preventDefault();
-            
             let conceptoFinal = document.getElementById('gasto-concepto').value;
             if (conceptoFinal === "Otros...") {
                 conceptoFinal = document.getElementById('gasto-concepto-otros').value.trim() || "Otros";
@@ -468,25 +465,17 @@
             const fechaOriginalStr = document.getElementById('gasto-fecha').value; 
             const notaBase = document.getElementById('gasto-nota').value.trim();
 
-            // Dividimos los montos equitativamente
             const montoPorCuotaPesos = Number((montoTotalPesos / cuotasPedidas).toFixed(2));
             const montoPorCuotaUsd = Number((montoTotalUsd / cuotasPedidas).toFixed(2));
 
             let registrosAGuardar = [];
 
-            // Generamos las fechas mes a mes de forma limpia
             for (let i = 0; i < cuotasPedidas; i++) {
                 let fechaCuota = new Date(fechaOriginalStr + "T00:00:00");
-                
-                // Aplicamos el mes de inicio + el avance de cuota correspondiente
                 fechaCuota.setMonth(fechaCuota.getMonth() + mesInicioDesfase + i);
-                
                 let fechaFormateada = fechaCuota.toISOString().split('T')[0];
-
-                // Solo la primera cuota respeta el estado del formulario; las siguientes van directo a "Proyectado"
                 let estadoCuotaActual = (i === 0) ? estado1raCuota : "Proyectado";
 
-                // Armamos la nota identificadora
                 let prefijoCuota = cuotasPedidas > 1 ? `[Cuota ${i + 1}/${cuotasPedidas}] ` : "";
                 let notaFinal = `${prefijoCuota}${notaBase} [FINAN: ${estadoCuotaActual}]`.trim();
 
@@ -503,7 +492,6 @@
                 });
             }
 
-            // Impactamos en masa (Bulk Insert) a Supabase
             try {
                 const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
                     method: 'POST',
@@ -601,35 +589,106 @@
             document.getElementById('lista-ejecutados').innerHTML = htmlEjecutados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos.</p>';
             document.getElementById('lista-proyectados').innerHTML = htmlProyectados || '<p class="text-xs text-slate-500 p-2 italic">Sin cuotas futuras.</p>';
 
+            const ahorroNeto = ingresosTotales - gastosTotales;
+            const salarioNetoBolsillo = ingresosTotales - deduccionesSalario;
+
             document.getElementById('card-ingresos').textContent = `$${ingresosTotales.toLocaleString('es-AR')}`;
             document.getElementById('card-gastos').textContent = `$${gastosTotales.toLocaleString('es-AR')}`;
-            document.getElementById('card-ahorro').textContent = `$${(ingresosTotales - gastosTotales).toLocaleString('es-AR')}`;
-            document.getElementById('card-salario-neto').textContent = `$${(ingresosTotales - deduccionesSalario).toLocaleString('es-AR')}`;
+            document.getElementById('card-ahorro').textContent = `$${ahorroNeto.toLocaleString('es-AR')}`;
+            document.getElementById('card-salario-neto').textContent = `$${salarioNetoBolsillo.toLocaleString('es-AR')}`;
             document.getElementById('card-no-necesario').textContent = `$${gastoNoNecesario.toLocaleString('es-AR')}`;
 
-            renderizarGraficoDonut(distribuciónCategorias);
+            // RENDERS DINÁMICOS CORREGIDOS:
+            
+            // 1. Cálculo e inyección del Porcentaje Real de Ahorro
+            const pctAhorro = ingresosTotales > 0 ? ((ahorroNeto / ingresosTotales) * 100).toFixed(1) : 0;
+            document.getElementById('card-ahorro-pct').textContent = `${pctAhorro}% del ingreso`;
+
+            // 2. Generación dinámica de la Grilla de Texto del Resumen Operativo
+            let txtResumenHTML = `
+                <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                    <span class="text-slate-400">💰 Ingresos Brutos Totales:</span>
+                    <span class="font-bold text-emerald-400">$${ingresosTotales.toLocaleString('es-AR')}</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                    <span class="text-slate-400">💸 Deducciones / Retenciones:</span>
+                    <span class="font-bold text-rose-400">-$${deduccionesSalario.toLocaleString('es-AR')}</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1.5 bg-slate-950/40 p-1.5 rounded-lg">
+                    <span class="text-slate-300 font-medium">💼 Salario Neto de Bolsillo:</span>
+                    <span class="font-black text-cyan-400">$${salarioNetoBolsillo.toLocaleString('es-AR')}</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                    <span class="text-slate-400">🛒 Erogación de Gastos Totales:</span>
+                    <span class="font-bold text-slate-200">$${gastosTotales.toLocaleString('es-AR')}</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                    <span class="text-slate-400">🍿 De los cuales son No Necesarios:</span>
+                    <span class="font-bold text-amber-400">$${gastoNoNecesario.toLocaleString('es-AR')}</span>
+                </div>
+                <div class="flex justify-between pt-1 p-2 rounded-xl text-center flex-col sm:flex-row items-center justify-between ${ahorroNeto >= 0 ? 'bg-emerald-950/30 border border-emerald-500/20' : 'bg-rose-950/30 border border-rose-500/20'} mt-4">
+                    <span class="font-bold ${ahorroNeto >= 0 ? 'text-emerald-400' : 'text-rose-400'}">REMANENTE / BALANCE FINAL:</span>
+                    <span class="font-black ${ahorroNeto >= 0 ? 'text-emerald-300 text-base' : 'text-rose-300 text-base'}">$${ahorroNeto.toLocaleString('es-AR')} (${pctAhorro}%)</span>
+                </div>
+            `;
+            document.getElementById('resumen-texto-dashboard').innerHTML = txtResumenHTML;
+
+            renderizerGraficoDonut(distribuciónCategorias);
         }
 
-        function renderizarGraficoDonut(dataDistribucion) {
+        function renderizerGraficoDonut(dataDistribucion) {
             const ctx = document.getElementById('chartGastos').getContext('2d');
             const labels = Object.keys(dataDistribucion); const datos = Object.values(dataDistribucion);
             if (chartInstance) chartInstance.destroy();
+            
+            if(labels.length === 0) {
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { labels: ['Sin gastos'], datasets: [{ data: [1], backgroundColor: ['#334155'], borderWidth: 0 }] },
+                    options: { responsive: true, cutout: '70%', plugins: { legend: { display: false } } }
+                });
+                return;
+            }
+
             chartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: labels,
-                    datasets: [{ data: datos, backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4'], borderWidth: 1 }]
+                    datasets: [{ 
+                        data: datos, 
+                        backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899', '#f97316'], 
+                        borderWidth: 1,
+                        borderColor: '#1e293b'
+                    }]
                 },
-                options: { responsive: true, cutout: '70%' }
+                options: { 
+                    responsive: true, 
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#cbd5e1', font: { size: 10 }, boxWidth: 12 }
+                        }
+                    }
+                }
             });
         }
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('bg-blue-600', 'text-white');
+                b.classList.add('text-slate-400', 'hover:text-slate-200', 'font-semibold');
+            });
+            
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-slate-400', 'hover:text-slate-200', 'font-semibold');
+                activeBtn.classList.add('bg-blue-600', 'text-white', 'font-bold');
+            }
         }
     </script>
 </body>
 </html>
-
-

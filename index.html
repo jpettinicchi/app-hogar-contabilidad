@@ -151,9 +151,7 @@
 
         <div id="tab-gasto" class="tab-content hidden">
             <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 max-w-3xl mx-auto">
-                <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-rose-400">
-                    <i class="fa-solid fa-money-bill-transfer"></i> Nuevo Gasto
-                </h3>
+                <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-rose-400"><i class="fa-solid fa-money-bill-transfer"></i> Nuevo Gasto</h3>
                 <form id="form-gasto" onsubmit="guardarGasto(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Fecha de Compra *</label>
@@ -191,12 +189,10 @@
                     </div>
                     <div class="sm:col-span-3">
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Nota / Comentario</label>
-                        <input type="text" id="gasto-nota" placeholder="Detalles de la erogación..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        <input type="text" id="gasto-nota" placeholder="Detalles..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
-                    <div class="sm:col-span-3 flex gap-3 mt-2">
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2">
-                            <i class="fa-solid fa-floppy-disk"></i> Guardar Gasto
-                        </button>
+                    <div class="sm:col-span-3">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Guardar Gasto</button>
                     </div>
                 </form>
             </div>
@@ -240,20 +236,15 @@
         <div id="tab-movimientos" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos del Mes Corriente
-                    </h3>
+                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos del Mes Corriente</h3>
                     <div class="overflow-x-auto max-h-[450px] overflow-y-auto pr-1" id="lista-ejecutados"></div>
                 </div>
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Cronograma de Gastos Proyectados (Próximos 12 Meses)
-                    </h3>
+                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Cronograma de Gastos Proyectados (Próximos 12 Meses)</h3>
                     <div class="overflow-x-auto max-h-[450px] overflow-y-auto pr-1" id="lista-proyectados"></div>
                 </div>
             </div>
         </div>
-
     </main>
 
     <script>
@@ -383,73 +374,4 @@
         }
 
         async function guardarGasto(e) {
-            e.preventDefault();
-            const payload = [{
-                fecha: document.getElementById('gasto-fecha').value,
-                tipo_movimiento: "Gasto", fijo_variable: document.getElementById('gasto-fijo-variable').value,
-                gasto_necesario: document.getElementById('gasto-necesario').value,
-                tipo_gasto: document.getElementById('gasto-tipo').value, concepto: document.getElementById('gasto-concepto').value,
-                monto_pesos: parseFloat(document.getElementById('gasto-monto-pesos').value), monto_usd: 0,
-                nota: document.getElementById('gasto-nota').value.trim()
-            }];
-            try {
-                await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
-                    method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                document.getElementById('form-gasto').reset();
-                cargarTodo();
-            } catch (err) { alert(err.message); }
-        }
-
-        async function guardarIngreso(e) {
-            e.preventDefault();
-            const payload = {
-                fecha: document.getElementById('ingreso-fecha').value, tipo_movimiento: "Ingreso",
-                fijo_variable: "FIJO", gasto_necesario: "Necesario", tipo_gasto: document.getElementById('ingreso-categoria').value,
-                concepto: document.getElementById('ingreso-concepto').value, monto_pesos: parseFloat(document.getElementById('ingreso-monto-pesos').value),
-                monto_usd: 0, nota: ""
-            };
-            try {
-                await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
-                    method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                document.getElementById('form-ingreso').reset();
-                cargarTodo();
-            } catch (err) { alert(err.message); }
-        }
-
-        function procesarYRenderizarTableros() {
-            const filtro = document.getElementById('filtro-temporal').value;
-            const hoy = new Date();
-            const mesActualStr = String(hoy.getMonth() + 1).padStart(2, '0');
-            const anioActualStr = String(hoy.getFullYear());
-
-            let ingresosTotales = 0; let gastosTotales = 0; let deduccionesSalario = 0; let gastoNoNecesario = 0;
-            let distribuciónCategorias = {}; let htmlEjecutados = ""; let htmlProyectados = "";
-
-            let bolsaIngresosMeses = {}; let bolsaGastosMeses = {};
-            nombresMesesLetra.forEach(m => { bolsaIngresosMeses[m] = 0; bolsaGastosMeses[m] = 0; });
-
-            // 1. PRIMER PASO: Mapeamos los fijos de la base sin importar el mes (Para que no se bloqueen por el filtro)
-            let fijosUnicosPlantilla = [];
-            globalMovimientos.forEach(m => {
-                if(m.tipo_movimiento === "Gasto" && m.fijo_variable === "FIJO") {
-                    if (!fijosUnicosPlantilla.some(f => f.concepto === m.concepto)) {
-                        fijosUnicosPlantilla.push(m);
-                    }
-                }
-            });
-
-            // 2. SEGUNDO PASO: Procesamos y sumamos a la bolsa mensual de barras e indicadores
-            globalMovimientos.forEach(mov => {
-                const parts = mov.fecha.split('-');
-                if (parts[0] !== anioActualStr) return;
-                
-                const mesIndex = parseInt(parts[1]) - 1;
-                const tagMesLetra = nombresMesesLetra[mesIndex];
-
-                if (mov.tipo_movimiento === "Ingreso" && mov.tipo_gasto !== "Impuestos salario") {
-                    bolsaIngresosMeses[tagMesLetra] += mov.monto_pesos;
-                } else if (mov.tipo_movimiento === "Gasto")
+            e.preventDefault

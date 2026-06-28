@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contabilidad del Hogar</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- FontAwesome para íconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         tailwind.config = {
@@ -30,7 +27,6 @@
 </head>
 <body class="bg-darkBg text-slate-100 min-h-screen font-sans antialiased">
 
-    <!-- MODAL DE CONFIGURACIÓN DE CREDENCIALES -->
     <div id="modal-conexion" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-darkCard p-6 rounded-2xl max-w-md w-full border border-slate-700 shadow-2xl">
             <div class="flex items-center gap-3 mb-4">
@@ -58,7 +54,6 @@
         </div>
     </div>
 
-    <!-- HEADER / BARRA SUPERIOR -->
     <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-40 px-4 py-3">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
             <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
@@ -77,7 +72,6 @@
                 </button>
             </div>
             
-            <!-- FILTRO TEMPORAL GLOBAL -->
             <div class="flex items-center gap-2 w-full sm:w-auto bg-slate-800 p-1 rounded-xl border border-slate-700">
                 <select id="filtro-temporal" onchange="cargarTodo()" class="bg-transparent text-sm font-semibold focus:outline-none pr-8 pl-2 py-1 cursor-pointer text-slate-200">
                     <option value="actual">📅 Mes Actual</option>
@@ -88,10 +82,8 @@
         </div>
     </header>
 
-    <!-- CONTENEDOR PRINCIPAL -->
     <main class="max-w-7xl mx-auto p-4 space-y-6">
 
-        <!-- TARJETAS INDICADORAS -->
         <section class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
                 <p class="text-xs font-semibold text-slate-400 mb-1">Ingresos Totales</p>
@@ -116,7 +108,6 @@
             </div>
         </section>
 
-        <!-- MENU NAVEGACIÓN -->
         <div class="flex gap-2 border-b border-slate-800 pb-px overflow-x-auto no-scrollbar">
             <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="tab-btn px-4 py-2 text-sm font-bold rounded-t-xl bg-blue-600 text-white flex items-center gap-2 whitespace-nowrap">
                 <i class="fa-solid fa-chart-pie"></i> Dashboard
@@ -132,7 +123,6 @@
             </button>
         </div>
 
-        <!-- PESTAÑA 1: DASHBOARD -->
         <div id="tab-dashboard" class="tab-content space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-6">
@@ -142,7 +132,6 @@
                             <canvas id="chartGastos"></canvas>
                         </div>
                     </div>
-                    <!-- GRÁFICO DE BARRAS EVOLUTIVO -->
                     <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
                         <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Planificación Anual (Ingresos vs Gastos Fijos + Variables)</h4>
                         <div class="w-full h-56">
@@ -151,7 +140,6 @@
                     </div>
                 </div>
 
-                <!-- RESUMEN OPERATIVO -->
                 <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 flex flex-col justify-start">
                     <h4 class="text-sm font-bold text-slate-300 mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
                         <i class="fa-solid fa-receipt text-cyan-400"></i> Resumen Operativo Financiero
@@ -161,7 +149,6 @@
             </div>
         </div>
 
-        <!-- PESTAÑA 2: CARGAR GASTO -->
         <div id="tab-gasto" class="tab-content hidden">
             <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 max-w-3xl mx-auto">
                 <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-rose-400"><i class="fa-solid fa-money-bill-transfer"></i> Nuevo Gasto</h3>
@@ -200,6 +187,23 @@
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Monto ($) *</label>
                         <input type="number" id="gasto-monto-pesos" step="0.01" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">¿Cuándo se paga respecto al cierre de tarjeta?</label>
+                        <select id="gasto-pago-tarjeta" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="Mes actual">Mes actual</option>
+                            <option value="Posterior al cierre">Posterior al cierre</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Cuotas totales (Vacío si es 1 pago)</label>
+                        <input type="number" id="gasto-cuotas-totales" placeholder="Ej: 6" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Cuota actual número</label>
+                        <input type="number" id="gasto-cuota-actual" placeholder="Ej: 1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+
                     <div class="sm:col-span-3">
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Nota / Comentario</label>
                         <input type="text" id="gasto-nota" placeholder="Detalles de la erogación..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
@@ -211,7 +215,6 @@
             </div>
         </div>
 
-        <!-- PESTAÑA 3: CARGAR INGRESO -->
         <div id="tab-ingreso" class="tab-content hidden">
             <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 max-w-3xl mx-auto">
                 <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-emerald-400"><i class="fa-solid fa-wallet"></i> Nuevo Ingreso</h3>
@@ -247,7 +250,6 @@
             </div>
         </div>
 
-        <!-- PESTAÑA 4: LISTADO DE MOVIMIENTOS -->
         <div id="tab-movimientos" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
@@ -402,12 +404,21 @@
 
         async function guardarGasto(e) {
             e.preventDefault();
+            const cTotales = document.getElementById('gasto-cuotas-totales').value;
+            const cActual = document.getElementById('gasto-cuota-actual').value;
+
             const payload = [{
                 fecha: document.getElementById('gasto-fecha').value,
-                tipo_movimiento: "Gasto", fijo_variable: document.getElementById('gasto-fijo-variable').value,
+                tipo_movimiento: "Gasto", 
+                fijo_variable: document.getElementById('gasto-fijo-variable').value,
                 gasto_necesario: document.getElementById('gasto-necesario').value,
-                tipo_gasto: document.getElementById('gasto-tipo').value, concepto: document.getElementById('gasto-concepto').value,
-                monto_pesos: parseFloat(document.getElementById('gasto-monto-pesos').value), monto_usd: 0,
+                tipo_gasto: document.getElementById('gasto-tipo').value, 
+                concepto: document.getElementById('gasto-concepto').value,
+                monto_pesos: parseFloat(document.getElementById('gasto-monto-pesos').value), 
+                monto_usd: 0,
+                pago_tarjeta: document.getElementById('gasto-pago-tarjeta').value,
+                cuotas_totales: cTotales ? parseInt(cTotales) : null,
+                cuota_actual: cActual ? parseInt(cActual) : null,
                 nota: document.getElementById('gasto-nota').value.trim()
             }];
             try {
@@ -416,6 +427,7 @@
                     body: JSON.stringify(payload)
                 });
                 document.getElementById('form-gasto').reset();
+                document.getElementById('gasto-fecha').value = new Date().toISOString().split('T')[0];
                 cargarTodo();
             } catch (err) { alert(err.message); }
         }
@@ -434,6 +446,7 @@
                     body: JSON.stringify(payload)
                 });
                 document.getElementById('form-ingreso').reset();
+                document.getElementById('ingreso-fecha').value = new Date().toISOString().split('T')[0];
                 cargarTodo();
             } catch (err) { alert(err.message); }
         }
@@ -477,17 +490,24 @@
                 if (filtro !== 'anual' && parts[1] !== mesActualStr) return;
 
                 if (mov.tipo_movimiento === "Gasto") {
+                    // Armamos un tag visual si tiene cuotas cargadas
+                    let tagCuotas = "";
+                    if (mov.cuotas_totales) {
+                        tagCuotas = `<span class="bg-blue-900/60 text-blue-300 text-[9px] px-1 rounded font-mono font-bold ml-1.5">c. ${mov.cuota_actual || 1}/${mov.cuotas_totales}</span>`;
+                    }
+                    
                     let itemHtml = `
                         <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-xs mb-1.5">
                             <div class="space-y-1">
                                 <div class="flex items-center gap-1.5">
                                     <span class="font-bold text-slate-200">${mov.concepto}</span>
+                                    ${tagCuotas}
                                     <select onchange="modificarTipoLocal('${mov.id}', this.value)" class="bg-slate-800 text-[10px] text-slate-300 px-1 py-0.5 rounded border border-slate-700 font-semibold focus:outline-none cursor-pointer">
                                         <option value="VARIABLE" ${mov.fijo_variable === 'VARIABLE' ? 'selected' : ''}>VARIABLE</option>
                                         <option value="FIJO" ${mov.fijo_variable === 'FIJO' ? 'selected' : ''}>FIJO</option>
                                     </select>
                                 </div>
-                                <p class="text-[10px] text-slate-400">${mov.fecha} · <span class="text-slate-500">${mov.nota || mov.tipo_gasto}</span></p>
+                                <p class="text-[10px] text-slate-400">${mov.fecha} · <span class="text-slate-500">${mov.nota || mov.tipo_gasto} · ${mov.pago_tarjeta || 'Mes actual'}</span></p>
                             </div>
                             <div class="text-right flex items-center gap-2">
                                 <span class="text-[10px] text-slate-500 font-mono font-bold">AR$</span>

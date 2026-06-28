@@ -51,8 +51,7 @@
                     <label class="block text-xs font-semibold mb-1 text-slate-400">Anon Key / Clave Pública *</label>
                     <input type="password" id="setup-key" placeholder="eyJhbGciOi..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 text-slate-200">
                 </div>
-                <div id="setup-error" class="text-xs text-red-400 bg-red-500/10 p-3 rounded-xl hidden border border-red-500/20"></div>
-                <button onclick="guardarConfiguracionManual()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold text-sm transition-colors shadow-lg shadow-blue-600/20">
+                <button onclick="guardarConfiguracionManual()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold text-sm transition-colors shadow-lg">
                     Conectar y guardar
                 </button>
             </div>
@@ -73,7 +72,7 @@
                         </div>
                     </div>
                 </div>
-                <button onclick="document.getElementById('modal-conexion').classList.remove('hidden')" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors text-slate-400 hover:text-slate-200">
+                <button onclick="document.getElementById('modal-conexion').classList.remove('hidden')" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors text-slate-400">
                     <i class="fa-solid fa-gear"></i>
                 </button>
             </div>
@@ -82,7 +81,7 @@
             <div class="flex items-center gap-2 w-full sm:w-auto bg-slate-800 p-1 rounded-xl border border-slate-700">
                 <select id="filtro-temporal" onchange="cargarTodo()" class="bg-transparent text-sm font-semibold focus:outline-none pr-8 pl-2 py-1 cursor-pointer text-slate-200">
                     <option value="actual">📅 Mes Actual</option>
-                    <option value="proyectado">🔮 Mes Proyectado</option>
+                    <option value="proyectado">🔮 Vista Proyecciones (12 Meses)</option>
                     <option value="anual">📊 Acumulado Anual</option>
                 </select>
             </div>
@@ -136,7 +135,6 @@
         <!-- PESTAÑA 1: DASHBOARD -->
         <div id="tab-dashboard" class="tab-content space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- PANEL GRÁFICOS SOLAPADOS -->
                 <div class="space-y-6">
                     <div class="bg-darkCard p-4 rounded-2xl border border-slate-800 flex flex-col items-center">
                         <h4 class="text-sm font-bold text-slate-300 self-start mb-4">🔮 Distribución de Gastos</h4>
@@ -144,10 +142,10 @@
                             <canvas id="chartGastos"></canvas>
                         </div>
                     </div>
-                    <!-- NUEVO GRÁFICO DE BARRAS DE PROYECCIÓN EVOLUTIVA -->
+                    <!-- GRÁFICO DE BARRAS EVOLUTIVO DE 12 MESES -->
                     <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                        <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Tendencia de Flujos Mensuales (Ingresos vs Gastos)</h4>
-                        <div class="w-full h-48">
+                        <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Planificación Anual (Ingresos vs Gastos Fijos + Variables)</h4>
+                        <div class="w-full h-56">
                             <canvas id="chartEvolucionMensual"></canvas>
                         </div>
                     </div>
@@ -177,9 +175,8 @@
                     <div>
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Fijo / Variable *</label>
                         <select id="gasto-fijo-variable" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                            <option value="">Seleccionar...</option>
-                            <option value="FIJO">FIJO (Se repite automáticamente a futuro)</option>
                             <option value="VARIABLE">VARIABLE</option>
+                            <option value="FIJO">FIJO (Se proyectará en los próximos 12 meses)</option>
                         </select>
                     </div>
                     <div>
@@ -197,52 +194,17 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Concepto *</label>
-                        <select id="gasto-concepto" required onchange="chequearConceptoOtros(this, 'gasto-otros-container')" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        <select id="gasto-concepto" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                             <option value="">Primero seleccionar tipo...</option>
                         </select>
-                    </div>
-                    <div id="gasto-otros-container" class="hidden">
-                        <label class="block text-xs font-semibold mb-1 text-amber-400">Especificar Concepto *</label>
-                        <input type="text" id="gasto-concepto-otros" class="w-full bg-slate-900 border border-amber-600/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-amber-200">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Monto ($) *</label>
                         <input type="number" id="gasto-monto-pesos" step="0.01" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Monto en USD (opcional)</label>
-                        <input type="number" id="gasto-monto-usd" step="0.01" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Estado Inicial *</label>
-                        <select id="gasto-estado-virtual" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                            <option value="Ejecutado">Ejecutado (Pagado ya)</option>
-                            <option value="Proyectado">Proyectado (Compromiso a futuro)</option>
-                        </select>
-                    </div>
-
-                    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold mb-1 text-blue-400">¿Dividir en cuotas fijas?</label>
-                            <select id="gasto-cuotas" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
-                                <option value="1">No, pago único completo</option>
-                                <option value="3">3 Cuotas iguales</option>
-                                <option value="6">6 Cuotas iguales</option>
-                                <option value="12">12 Cuotas iguales</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold mb-1 text-blue-400">¿Impacto?</label>
-                            <select id="gasto-mes-inicio" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
-                                <option value="0">Mes Actual</option>
-                                <option value="1">Mes Siguiente</option>
-                            </select>
-                        </div>
-                    </div>
-
                     <div class="sm:col-span-3">
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Nota / Comentario</label>
-                        <input type="text" id="gasto-nota" placeholder="Detalles..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        <input type="text" id="gasto-nota" placeholder="Detalles de la erogación..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
                     <div class="sm:col-span-3 flex gap-3 mt-2">
                         <button type="submit" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2">
@@ -255,10 +217,9 @@
 
         <!-- PESTAÑA 3: CARGAR INGRESO -->
         <div id="tab-ingreso" class="tab-content hidden">
+            <!-- Formulario de ingreso (Mismo diseño limpio) -->
             <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 max-w-3xl mx-auto">
-                <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-emerald-400">
-                    <i class="fa-solid fa-wallet"></i> Nuevo Ingreso
-                </h3>
+                <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-emerald-400"><i class="fa-solid fa-wallet"></i> Nuevo Ingreso</h3>
                 <form id="form-ingreso" onsubmit="guardarIngreso(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Fecha *</label>
@@ -276,45 +237,35 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Concepto *</label>
-                        <select id="ingreso-concepto" required onchange="chequearConceptoOtros(this, 'ingreso-otros-container')" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        <select id="ingreso-concepto" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                             <option value="">Seleccionar categoría primero...</option>
                         </select>
                     </div>
-                    <div id="ingreso-otros-container" class="hidden">
-                        <label class="block text-xs font-semibold mb-1 text-amber-400">Especificar Concepto *</label>
-                        <input type="text" id="ingreso-concepto-otros" class="w-full bg-slate-900 border border-amber-600/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-amber-200">
-                    </div>
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Monto en Pesos ($) *</label>
-                        <input type="number" id="ingreso-monto-pesos" step="0.01" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Monto ($) *</label>
+                        <input type="number" id="ingreso-monto-pesos" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Nota / Comentario</label>
-                        <input type="text" id="ingreso-nota" placeholder="Detalle..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                    </div>
-                    <div class="sm:col-span-2 flex gap-3 mt-2">
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2">
-                            <i class="fa-solid fa-floppy-disk"></i> Guardar Ingreso
-                        </button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg flex items-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Guardar Ingreso</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- PESTAÑA 4: LISTADO DE MOVIMIENTOS EDITABLES -->
+        <!-- PESTAÑA 4: LISTADO DE MOVIMIENTOS -->
         <div id="tab-movimientos" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
                     <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos Registrados / Ejecutados
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos del Mes Corriente
                     </h3>
-                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto pr-1" id="lista-ejecutados"></div>
+                    <div class="overflow-x-auto max-h-[450px] overflow-y-auto pr-1" id="lista-ejecutados"></div>
                 </div>
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
                     <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Proyecciones de Gastos y Cuotas a Futuro (Editables)
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Cronograma de Gastos Proyectados (Próximos 12 Meses)
                     </h3>
-                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto pr-1" id="lista-proyectados"></div>
+                    <div class="overflow-x-auto max-h-[450px] overflow-y-auto pr-1" id="lista-proyectados"></div>
                 </div>
             </div>
         </div>
@@ -361,8 +312,7 @@
 
             const tGastoSelect = document.getElementById('gasto-tipo');
             Object.keys(matrizConceptos).forEach(cat => {
-                let op = document.createElement('option');
-                op.value = cat; op.textContent = cat;
+                let op = document.createElement('option'); op.value = cat; op.textContent = cat;
                 tGastoSelect.appendChild(op);
             });
             intentarConexionAutomatica();
@@ -371,36 +321,28 @@
         function intentarConexionAutomatica() {
             const cachedUrl = localStorage.getItem("hogar_sb_url");
             const cachedKey = localStorage.getItem("hogar_sb_key");
-            if (cachedUrl && cachedKey) {
-                SB_URL = cachedUrl; SB_KEY = cachedKey;
-                verificarConexionReal();
-            } else {
-                document.getElementById('modal-conexion').classList.remove('hidden');
-            }
+            if (cachedUrl && cachedKey) { SB_URL = cachedUrl; SB_KEY = cachedKey; verificarConexionReal(); }
+            else { document.getElementById('modal-conexion').classList.remove('hidden'); }
         }
 
         async function verificarConexionReal() {
             actualizarIndicadorStatus("bg-amber-500", "Validando base...");
             try {
                 const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar?limit=1`, {
-                    method: 'GET',
-                    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+                    method: 'GET', headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
                 });
                 if (!res.ok) throw new Error();
                 actualizarIndicadorStatus("bg-emerald-500", "Conectado");
                 document.getElementById('modal-conexion').classList.add('hidden');
                 cargarTodo();
-            } catch (err) {
-                document.getElementById('modal-conexion').classList.remove('hidden');
-            }
+            } catch (err) { document.getElementById('modal-conexion').classList.remove('hidden'); }
         }
 
         function guardarConfiguracionManual() {
-            const urlInput = document.getElementById('setup-url').value.trim();
-            const keyInput = document.getElementById('setup-key').value.trim();
-            localStorage.setItem("hogar_sb_url", urlInput);
-            localStorage.setItem("hogar_sb_key", keyInput);
-            SB_URL = urlInput; SB_KEY = keyInput;
+            SB_URL = document.getElementById('setup-url').value.trim();
+            SB_KEY = document.getElementById('setup-key').value.trim();
+            localStorage.setItem("hogar_sb_url", SB_URL);
+            localStorage.setItem("hogar_sb_key", SB_KEY);
             verificarConexionReal();
         }
 
@@ -433,19 +375,13 @@
             }
         }
 
-        function chequearConceptoOtros(selectElem, containerId) {
-            document.getElementById(containerId).classList.toggle('hidden', selectElem.value !== "Otros...");
-        }
-
         async function cargarTodo() {
             if (!SB_URL) return;
             try {
                 const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar?order=fecha.asc`, {
-                    method: 'GET',
-                    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+                    method: 'GET', headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
                 });
                 globalMovimientos = await res.json();
-                document.getElementById('status-text').textContent = `Conectado · ${globalMovimientos.length} registros`;
                 procesarYRenderizarTableros();
             } catch (err) { console.error(err); }
         }
@@ -464,65 +400,39 @@
 
         async function guardarGasto(e) {
             e.preventDefault();
-            let conceptoFinal = document.getElementById('gasto-concepto').value;
-            const montoTotalPesos = parseFloat(document.getElementById('gasto-monto-pesos').value);
-            const cuotasPedidas = parseInt(document.getElementById('gasto-cuotas').value);
-            const mesInicioDesfase = parseInt(document.getElementById('gasto-mes-inicio').value);
-            const estado1raCuota = document.getElementById('gasto-estado-virtual').value;
-            const fechaOriginalStr = document.getElementById('gasto-fecha').value; 
-            const notaBase = document.getElementById('gasto-nota').value.trim();
-
-            const montoPorCuotaPesos = Number((montoTotalPesos / cuotasPedidas).toFixed(2));
-            let registrosAGuardar = [];
-
-            for (let i = 0; i < cuotasPedidas; i++) {
-                let fechaCuota = new Date(fechaOriginalStr + "T00:00:00");
-                fechaCuota.setMonth(fechaCuota.getMonth() + mesInicioDesfase + i);
-                let fechaFormateada = fechaCuota.toISOString().split('T')[0];
-                let estadoCuotaActual = (i === 0) ? estado1raCuota : "Proyectado";
-
-                let prefijoCuota = cuotasPedidas > 1 ? `[Cuota ${i + 1}/${cuotasPedidas}] ` : "";
-                let notaFinal = `${prefijoCuota}${notaBase} [FINAN: ${estadoCuotaActual}]`.trim();
-
-                registrosAGuardar.push({
-                    fecha: fechaFormateada, tipo_movimiento: "Gasto",
-                    fijo_variable: document.getElementById('gasto-fijo-variable').value,
-                    gasto_necesario: document.getElementById('gasto-necesario').value,
-                    tipo_gasto: document.getElementById('gasto-tipo').value, concepto: conceptoFinal,
-                    monto_pesos: montoPorCuotaPesos, monto_usd: parseFloat(document.getElementById('gasto-monto-usd').value)||0,
-                    nota: notaFinal
-                });
-            }
-
+            const payload = [{
+                fecha: document.getElementById('gasto-fecha').value,
+                tipo_movimiento: "Gasto", fijo_variable: document.getElementById('gasto-fijo-variable').value,
+                gasto_necesario: document.getElementById('gasto-necesario').value,
+                tipo_gasto: document.getElementById('gasto-tipo').value, concepto: document.getElementById('gasto-concepto').value,
+                monto_pesos: parseFloat(document.getElementById('gasto-monto-pesos').value), monto_usd: 0,
+                nota: document.getElementById('gasto-nota').value.trim()
+            }];
             try {
                 await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
-                    method: 'POST',
-                    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(registrosAGuardar)
+                    method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
                 document.getElementById('form-gasto').reset();
-                switchTab('tab-dashboard'); cargarTodo();
+                cargarTodo();
             } catch (err) { alert(err.message); }
         }
 
         async function guardarIngreso(e) {
             e.preventDefault();
             const payload = {
-                fecha: document.getElementById('ingreso-fecha').value,
-                tipo_movimiento: "Ingreso", fijo_variable: "FIJO", gasto_necesario: "Necesario",
-                tipo_gasto: document.getElementById('ingreso-categoria').value,
-                concepto: document.getElementById('ingreso-concepto').value,
-                monto_pesos: parseFloat(document.getElementById('ingreso-monto-pesos').value),
-                monto_usd: 0, nota: document.getElementById('ingreso-nota').value.trim()
+                fecha: document.getElementById('ingreso-fecha').value, tipo_movimiento: "Ingreso",
+                fijo_variable: "FIJO", gasto_necesario: "Necesario", tipo_gasto: document.getElementById('ingreso-categoria').value,
+                concepto: document.getElementById('ingreso-concepto').value, monto_pesos: parseFloat(document.getElementById('ingreso-monto-pesos').value),
+                monto_usd: 0, nota: ""
             };
             try {
                 await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
-                    method: 'POST',
-                    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 document.getElementById('form-ingreso').reset();
-                switchTab('tab-dashboard'); cargarTodo();
+                cargarTodo();
             } catch (err) { alert(err.message); }
         }
 
@@ -535,48 +445,43 @@
             let ingresosTotales = 0; let gastosTotales = 0; let deduccionesSalario = 0; let gastoNoNecesario = 0;
             let distribuciónCategorias = {}; let htmlEjecutados = ""; let htmlProyectados = "";
 
-            // Estructuras para acumular la tendencia mes a mes a futuro
+            // Inicializamos las bolsas de los 12 meses
             let bolsaIngresosMeses = {}; let bolsaGastosMeses = {};
             nombresMesesLetra.forEach(m => { bolsaIngresosMeses[m] = 0; bolsaGastosMeses[m] = 0; });
 
-            // Paso 1: Mapeamos los movimientos que ya están en la base de datos
+            // 1. Mapear movimientos reales existentes
             globalMovimientos.forEach(mov => {
                 const parts = mov.fecha.split('-');
+                if (parts[0] !== anioActualStr) return;
+                
                 const mesIndex = parseInt(parts[1]) - 1;
                 const tagMesLetra = nombresMesesLetra[mesIndex];
 
-                let estadoReal = (mov.nota && mov.nota.includes("[FINAN: Proyectado]")) ? "Proyectado" : "Ejecutado";
-
-                // Acumulamos flujos para el gráfico evolutivo de barras si es del año actual
-                if (parts[0] === anioActualStr) {
-                    if (mov.tipo_movimiento === "Ingreso" && mov.tipo_gasto !== "Impuestos salario") {
-                        bolsaIngresosMeses[tagMesLetra] += mov.monto_pesos;
-                    } else if (mov.tipo_movimiento === "Gasto") {
-                        bolsaGastosMeses[tagMesLetra] += mov.monto_pesos;
-                    }
+                if (mov.tipo_movimiento === "Ingreso" && mov.tipo_gasto !== "Impuestos salario") {
+                    bolsaIngresosMeses[tagMesLetra] += mov.monto_pesos;
+                } else if (mov.tipo_movimiento === "Gasto") {
+                    bolsaGastosMeses[tagMesLetra] += mov.monto_pesos;
                 }
 
-                // Filtros para las tarjetas superiores
-                if (parts[0] !== anioActualStr) return;
+                // Filtrado para tarjetas e indicadores locales superiores
                 if (filtro !== 'anual' && parts[1] !== mesActualStr) return;
 
                 if (mov.tipo_movimiento === "Gasto") {
                     let itemHtml = `
                         <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-xs mb-1.5">
                             <div>
-                                <p class="font-bold text-slate-200">${mov.concepto}</p>
-                                <p class="text-[10px] text-slate-400">${mov.fecha} · <span class="text-slate-500">${mov.nota || mov.fijo_variable}</span></p>
+                                <p class="font-bold text-slate-200">${mov.concepto} <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded ml-1">${mov.fijo_variable}</span></p>
+                                <p class="text-[10px] text-slate-400">${mov.fecha} · <span class="text-slate-500">${mov.nota || mov.tipo_gasto}</span></p>
                             </div>
                             <div class="text-right flex items-center gap-2">
-                                <input type="number" value="${mov.monto_pesos}" onchange="modificarMontoLocal(${mov.id || null}, this.value)" class="w-20 bg-slate-950 border border-slate-700 rounded text-right px-1 font-mono font-bold text-slate-200 focus:outline-none">
+                                <span class="text-[10px] text-slate-500 font-mono">AR$</span>
+                                <input type="number" value="${mov.monto_pesos}" onchange="modificarMontoLocal(${mov.id}, this.value)" class="w-24 bg-slate-950 border border-slate-700 rounded text-right px-1 font-mono font-bold text-slate-100 focus:border-blue-500 focus:outline-none">
                             </div>
                         </div>
                     `;
-                    if (estadoReal === "Proyectado" || filtro === "proyectado") htmlProyectados += itemHtml;
+                    if (mov.fijo_variable === "FIJO") htmlProyectados += itemHtml;
                     else htmlEjecutados += itemHtml;
                 }
-
-                if (filtro === "actual" && estadoReal === "Proyectado") return;
 
                 if (mov.tipo_movimiento === "Ingreso") {
                     if (mov.tipo_gasto === "Impuestos salario") deduccionesSalario += mov.monto_pesos;
@@ -588,47 +493,55 @@
                 }
             });
 
-            // Paso 2: Motor de Proyección de Gastos Fijos hacia los meses futuros
-            if (filtro === "proyectado") {
-                globalMovimientos.forEach(mov => {
-                    if (mov.tipo_movimiento === "Gasto" && mov.fijo_variable === "FIJO") {
-                        const parts = mov.fecha.split('-');
-                        // Si es un gasto fijo del mes pasado, lo proyectamos al mes actual si no existe ya
-                        if (parts[1] === String(hoy.getMonth()).padStart(2, '0')) {
-                            let yaExiste = globalMovimientos.some(m => m.concepto === mov.concepto && m.fecha.split('-')[1] === mesActualStr);
-                            if (!yaExiste) {
-                                gastosTotales += mov.monto_pesos;
-                                distribuciónCategorias[mov.tipo_gasto] = (distribuciónCategorias[mov.tipo_gasto] || 0) + mov.monto_pesos;
-                            }
+            // 2. NUEVO MOTOR DE PROYECTADOS CONTINUO: Expande fijos en la barra por el resto de los 12 meses
+            let fijosUnicosPlantilla = [];
+            globalMovimientos.forEach(m => {
+                if(m.tipo_movimiento === "Gasto" && m.fijo_variable === "FIJO" && !fijosUnicosPlantilla.some(f => f.concepto === m.concepto)) {
+                    fijosUnicosPlantilla.push(m);
+                }
+            });
+
+            // Si está activada la vista de proyecciones, inyectamos virtualmente los fijos en los meses vacíos del gráfico de barra
+            nombresMesesLetra.forEach((m, idx) => {
+                const numMesFiltro = idx + 1;
+                fijosUnicosPlantilla.forEach(fijo => {
+                    // Verificamos si en la base de datos real ya tenías cargado este fijo para ese mes específico
+                    let yaExisteReal = globalMovimientos.some(mReal => mReal.concepto === fijo.concepto && parseInt(mReal.fecha.split('-')[1]) === numMesFiltro);
+                    if (!yaExisteReal) {
+                        bolsaGastosMeses[m] += fijo.monto_pesos; // Se suma automáticamente al gráfico de barra futuro
+                        
+                        // Si estamos calculando el "Mes Proyectado" seleccionado arriba, lo sumamos a las tarjetas superiores
+                        if (filtro === "proyectado") {
+                            gastosTotales += fijo.monto_pesos;
+                            distribuciónCategorias[fijo.tipo_gasto] = (distribuciónCategorias[fijo.tipo_gasto] || 0) + fijo.monto_pesos;
                         }
                     }
                 });
-            }
+            });
 
-            // Inyección en tarjetas
+            // Actualización de Tarjetas e Indicadores
             const ahorroNeto = ingresosTotales - gastosTotales;
             const salarioNetoBolsillo = ingresosTotales - deduccionesSalario;
+            const pctAhorro = ingresosTotales > 0 ? ((ahorroNeto / ingresosTotales) * 100).toFixed(1) : 0;
 
             document.getElementById('card-ingresos').textContent = `$${ingresosTotales.toLocaleString('es-AR')}`;
             document.getElementById('card-gastos').textContent = `$${gastosTotales.toLocaleString('es-AR')}`;
             document.getElementById('card-ahorro').textContent = `$${ahorroNeto.toLocaleString('es-AR')}`;
             document.getElementById('card-salario-neto').textContent = `$${salarioNetoBolsillo.toLocaleString('es-AR')}`;
             document.getElementById('card-no-necesario').textContent = `$${gastoNoNecesario.toLocaleString('es-AR')}`;
-
-            const pctAhorro = ingresosTotales > 0 ? ((ahorroNeto / ingresosTotales) * 100).toFixed(1) : 0;
             document.getElementById('card-ahorro-pct').textContent = `${pctAhorro}% del ingreso`;
 
-            document.getElementById('lista-ejecutados').innerHTML = htmlEjecutados || '<p class="text-xs text-slate-500 p-2 italic">Sin registros en este mes.</p>';
-            document.getElementById('lista-proyectados').innerHTML = htmlProyectados || '<p class="text-xs text-slate-500 p-2 italic">Sin cuotas ni compromisos futuros fijados.</p>';
+            document.getElementById('lista-ejecutados').innerHTML = htmlEjecutados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos variables este mes.</p>';
+            document.getElementById('lista-proyectados').innerHTML = htmlProyectados || '<p class="text-xs text-slate-500 p-2 italic">Cargá un gasto y marcalo como FIJO para activarlo en el tiempo.</p>';
 
-            // Render del texto resumido operativo
+            // Texto Resumen del Dashboard
             document.getElementById('resumen-texto-dashboard').innerHTML = `
-                <div class="flex justify-between border-b border-slate-800 pb-2"><span>💰 Ingresos Estimados:</span><span class="font-bold text-emerald-400">$${ingresosTotales.toLocaleString('es-AR')}</span></div>
-                <div class="flex justify-between border-b border-slate-800 pb-2"><span>💸 Retenciones de Recibo:</span><span class="font-bold text-rose-400">-$${deduccionesSalario.toLocaleString('es-AR')}</span></div>
-                <div class="flex justify-between border-b border-slate-800 pb-2 bg-slate-950/40 p-2 rounded-lg"><span>💼 Salario de Bolsillo Disponible:</span><span class="font-black text-cyan-400">$${salarioNetoBolsillo.toLocaleString('es-AR')}</span></div>
-                <div class="flex justify-between border-b border-slate-800 pb-2"><span>🛒 Gastos Totales del Período:</span><span class="font-bold text-slate-200">$${gastosTotales.toLocaleString('es-AR')}</span></div>
+                <div class="flex justify-between border-b border-slate-800 pb-2"><span>💰 Ingresos Totales de este mes:</span><span class="font-bold text-emerald-400">$${ingresosTotales.toLocaleString('es-AR')}</span></div>
+                <div class="flex justify-between border-b border-slate-800 pb-2"><span>💼 Salario de Bolsillo Disponible:</span><span class="font-black text-cyan-400">$${salarioNetoBolsillo.toLocaleString('es-AR')}</span></div>
+                <div class="flex justify-between border-b border-slate-800 pb-2"><span>🛒 Compromiso de Gastos (Fijos + Var):</span><span class="font-bold text-slate-200">$${gastosTotales.toLocaleString('es-AR')}</span></div>
+                <div class="flex justify-between border-b border-slate-800 pb-2 text-amber-400"><span>🍿 Erogación No Necesaria:</span><span>$${gastoNoNecesario.toLocaleString('es-AR')}</span></div>
                 <div class="flex justify-between p-2.5 rounded-xl ${ahorroNeto >= 0 ? 'bg-emerald-950/40 border border-emerald-500/20' : 'bg-rose-950/40 border border-rose-500/20'} mt-4">
-                    <span class="font-bold text-slate-200">EXCEDENTE PROYECTADO:</span><span class="font-black text-base ${ahorroNeto >= 0 ? 'text-emerald-300' : 'text-rose-300'}">$${ahorroNeto.toLocaleString('es-AR')} (${pctAhorro}%)</span>
+                    <span class="font-bold text-slate-200">EXCEDENTE ESTIMADO:</span><span class="font-black text-base ${ahorroNeto >= 0 ? 'text-emerald-300' : 'text-rose-300'}">$${ahorroNeto.toLocaleString('es-AR')} (${pctAhorro}%)</span>
                 </div>
             `;
 
@@ -643,34 +556,31 @@
                 type: 'doughnut',
                 data: {
                     labels: Object.keys(dataDistribucion),
-                    datasets: [{ data: Object.values(dataDistribucion), backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6'], borderWidth: 1, borderColor: '#1e293b' }]
+                    datasets: [{ data: Object.values(dataDistribucion), backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4'], borderWidth: 1, borderColor: '#1e293b' }]
                 },
                 options: { responsive: true, cutout: '74%', plugins: { legend: { display: false } } }
             });
         }
 
-        // RENDERIZADOR DEL NUEVO GRÁFICO DE BARRAS SOLAPADAS
         function renderizarGraficoBarrasEvolutivo(ingresos, gastos) {
             const ctx = document.getElementById('chartEvolucionMensual').getContext('2d');
             if (chartBarrasInstance) chartBarrasInstance.destroy();
-            
             chartBarrasInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: nombresMesesLetra,
                     datasets: [
-                        { label: 'Ingresos ($)', data: Object.values(ingresos), backgroundColor: '#10b981', borderRadius: 4 },
-                        { label: 'Gastos ($)', data: Object.values(gastos), backgroundColor: '#ef4444', borderRadius: 4 }
+                        { label: 'Ingresos ($) [Variables]', data: Object.values(ingresos), backgroundColor: '#10b981', borderRadius: 4 },
+                        { label: 'Gastos Proyectados ($) [Fijos Incluidos]', data: Object.values(gastos), backgroundColor: '#ef4444', borderRadius: 4 }
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     scales: {
                         x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-                        y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(51, 65, 85, 0.2)' } }
+                        y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(51, 65, 85, 0.1)' } }
                     },
-                    plugins: { legend: { display: true, labels: { color: '#cbd5e1', boxWidth: 10, font: { size: 10 } } } }
+                    plugins: { legend: { display: true, labels: { color: '#cbd5e1', font: { size: 10 } } } }
                 }
             });
         }
@@ -678,6 +588,8 @@
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('bg-blue-600', 'text-white'); b.classList.add('text-slate-400'); });
+            const btn = document.getElementById(`btn-${tabId}`); if(btn) btn.classList.add('bg-blue-600', 'text-white');
         }
     </script>
 </body>

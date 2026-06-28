@@ -109,4 +109,68 @@
         </section>
 
         <div class="flex gap-2 border-b border-slate-800 pb-px overflow-x-auto no-scrollbar">
-            <button onclick="switchTab('tab-dashboard')" id="btn
+            <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="tab-btn px-4 py-2 text-sm font-bold rounded-t-xl bg-blue-600 text-white flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-chart-pie"></i> Dashboard
+            </button>
+            <button onclick="switchTab('tab-gasto')" id="btn-tab-gasto" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 rounded-t-xl flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-money-bill-wave"></i> Cargar Gasto
+            </button>
+            <button onclick="switchTab('tab-ingreso')" id="btn-tab-ingreso" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 rounded-t-xl flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-wallet"></i> Cargar Ingreso
+            </button>
+            <button onclick="switchTab('tab-movimientos')" id="btn-tab-movimientos" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 rounded-t-xl flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-list"></i> Movimientos
+            </button>
+        </div>
+
+        <div id="tab-dashboard" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-6">
+                    <div class="bg-darkCard p-4 rounded-2xl border border-slate-800 flex flex-col items-center">
+                        <h4 class="text-sm font-bold text-slate-300 self-start mb-4">🔮 Distribución de Gastos</h4>
+                        <div class="w-full max-w-[260px]">
+                            <canvas id="chartGastos"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
+                        <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Planificación Anual (Ingresos vs Gastos Fijos + Variables)</h4>
+                        <div class="w-full h-56">
+                            <canvas id="chartEvolucionMensual"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 flex flex-col justify-start">
+                    <h4 class="text-sm font-bold text-slate-300 mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-receipt text-cyan-400"></i> Resumen Operativo Financiero
+                    </h4>
+                    <div class="space-y-3.5 text-sm" id="resumen-texto-dashboard"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-gasto" class="tab-content hidden">
+            <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 max-w-3xl mx-auto">
+                <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-rose-400"><i class="fa-solid fa-money-bill-transfer"></i> Nuevo Gasto</h3>
+                <form id="form-gasto" onsubmit="guardarGasto(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Fecha de Compra *</label>
+                        <input type="date" id="gasto-fecha" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Fijo / Variable *</label>
+                        <select id="gasto-fijo-variable" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="VARIABLE">VARIABLE</option>
+                            <option value="FIJO">FIJO (Se proyectará en los próximos 12 meses)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Gasto Necesario *</label>
+                        <select id="gasto-necesario" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="Necesario">Necesario</option>
+                            <option value="No necesario">No necesario</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Tipo de Gasto *</label>
+                        <select id="gasto-tipo" required on

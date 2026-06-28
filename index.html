@@ -201,6 +201,7 @@
                         <input type="number" id="gasto-monto-pesos" step="0.01" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
 
+                    <!-- SECCIÓN DE TARJETAS REDIRIGIDA TOTALMENTE A LA COLUMNA 'pago_tarjeta_cierre' y 'nota' -->
                     <div>
                         <label class="block text-xs font-semibold mb-1 text-slate-400">¿Cuándo se paga respecto al cierre?</label>
                         <select id="gasto-pago-tarjeta" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
@@ -344,7 +345,6 @@
                 cargarTodo();
             } catch (err) { 
                 actualizarIndicadorStatus("bg-red-500", "Error de credenciales");
-                // CORRECCIÓN CLAVE: Si falla la conexión, abrimos el modal para poder sobreescribir los datos viejos
                 document.getElementById('modal-conexion').classList.remove('hidden'); 
             }
         }
@@ -427,6 +427,13 @@
             e.preventDefault();
             const cTotales = document.getElementById('gasto-cuotas-totales').value;
             const cActual = document.getElementById('gasto-cuota-actual').value;
+            const comentarioBase = document.getElementById('gasto-nota').value.trim();
+
+            // Mapeo Inteligente: Empaquetamos las cuotas adentro del texto de la nota tal como lo hacías en tu tabla original
+            let notaFinal = comentarioBase;
+            if (cTotales) {
+                notaFinal = `[Cuota ${cActual || 1}/${cTotales}] ${comentarioBase}`.trim();
+            }
 
             const payload = [{
                 fecha: document.getElementById('gasto-fecha').value,
@@ -438,9 +445,7 @@
                 monto_pesos: parseFloat(document.getElementById('gasto-monto-pesos').value), 
                 monto_usd: 0,
                 pago_tarjeta_cierre: document.getElementById('gasto-pago-tarjeta').value,
-                cuotas_cant: cTotales ? parseInt(cTotales) : null,
-                cuota_nro: cActual ? parseInt(cActual) : null,
-                nota: document.getElementById('gasto-nota').value.trim()
+                nota: notaFinal
             }];
             try {
                 const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
@@ -516,17 +521,11 @@
                 if (filtro !== 'anual' && parts[1] !== mesActualStr) return;
 
                 if (mov.tipo_movimiento === "Gasto") {
-                    let tagCuotas = "";
-                    if (mov.cuotas_cant) {
-                        tagCuotas = `<span class="bg-blue-900/60 text-blue-300 text-[9px] px-1 rounded font-mono font-bold ml-1.5">c. ${mov.cuota_nro || 1}/${mov.cuotas_cant}</span>`;
-                    }
-                    
                     let itemHtml = `
                         <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-xs mb-1.5">
                             <div class="space-y-1">
                                 <div class="flex items-center gap-1.5">
                                     <span class="font-bold text-slate-200">${mov.concepto}</span>
-                                    ${tagCuotas}
                                     <select onchange="modificarTipoLocal('${mov.id}', this.value)" class="bg-slate-800 text-[10px] text-slate-300 px-1 py-0.5 rounded border border-slate-700 font-semibold focus:outline-none cursor-pointer">
                                         <option value="VARIABLE" ${mov.fijo_variable === 'VARIABLE' ? 'selected' : ''}>VARIABLE</option>
                                         <option value="FIJO" ${mov.fijo_variable === 'FIJO' ? 'selected' : ''}>FIJO</option>

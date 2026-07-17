@@ -171,7 +171,7 @@
         <div id="tab-dashboard" class="tab-content space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-6">
-                    <!-- NUEVO GRÁFICO DE BARRAS HORIZONTALES ORDENADO DE MAYOR A MENOR -->
+                    <!-- NUEVO GRÁFICO DE BARRAS HORIZONTALES EN REEMPLAZO DE LA TORTA -->
                     <div class="bg-darkCard p-5 rounded-2xl border border-slate-800">
                         <h4 class="text-sm font-bold text-slate-300 mb-2 flex items-center gap-2">
                             <i class="fa-solid fa-chart-bar text-cyan-400"></i> Distribución de Gastos (De Mayor a Menor)
@@ -350,7 +350,7 @@
         };
 
         let SB_URL = ""; let SB_KEY = ""; let globalMovimientos = []; 
-        let chartRankingInstance = null; let chartBarrasInstance = null;
+        let chartInstance = null; let chartBarrasInstance = null;
         const nombresMesesLetra = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -677,42 +677,49 @@
                 </div>
             `;
 
-            // Renderizado del nuevo ranking horizontal dinámico ordenado de mayor a menor
             renderizarGraficoRankingHorizontal(distribuciónCategorias);
             renderizarGraficoBarrasEvolutivo(bolsaIngresosMeses, bolsaGastosMeses);
         }
 
-        // --- FUNCIÓN MODIFICADA: BARRAS HORIZONTALES DINÁMICAS EN LUGAR DE TORTA ---
+        // --- FUNCIÓN INDEPENDIENTE Y AUTÓNOMA DEL RANKING HORIZONTAL (BLINDADA) ---
         function renderizarGraficoRankingHorizontal(dataDistribucion) {
-            const ctx = document.getElementById('chartGastosRanking').getContext('2d');
-            if (chartInstance) chartInstance.destroy();
+            const canvas = document.getElementById('chartGastosRanking');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
 
-            // 1. Convertimos el objeto a un array de pares [categoría, monto]
+            // Busco si ya hay una instancia de gráfico ligada a este canvas y la destruyo
+            const chartExistente = Chart.getChart(canvas);
+            if (chartExistente) {
+                chartExistente.destroy();
+            }
+
+            const totalGastoMes = Object.values(dataDistribucion).reduce((a, b) => a + b, 0);
+
             let listaOrdenada = Object.keys(dataDistribucion).map(cat => {
-                return { categoria: cat, monto: dataDistribucion[cat] };
+                const monto = dataDistribucion[cat];
+                const porcentaje = totalGastoMes > 0 ? ((monto / totalGastoMes) * 100).toFixed(0) : 0;
+                return { categoria: cat, monto: monto, pct: porcentaje };
             });
 
-            // 2. Lo ordenamos estrictamente de Mayor a Menor monto
+            // Ordenamiento estricto de Mayor a Menor
             listaOrdenada.sort((a, b) => b.monto - a.monto);
 
-            // 3. Extraemos las etiquetas y los valores ordenados
             const etiquetas = listaOrdenada.map(item => item.categoria);
             const valores = listaOrdenada.map(item => item.monto);
 
-            // 4. Dibujamos el nuevo gráfico de tipo 'bar' horizontal (indexAxis: 'y')
-            chartInstance = new Chart(ctx, {
+            new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: etiquetas.length === 0 ? ['Sin movimientos'] : etiquetas,
                     datasets: [{
                         data: valores.length === 0 ? [0] : valores,
-                        backgroundColor: '#3b82f6',
-                        borderRadius: 5,
-                        barPercentage: 0.75
+                        backgroundColor: '#0d9488', // Color teal oscuro
+                        borderRadius: 4,
+                        barPercentage: 0.7
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // Hace que las barras sean horizontales
+                    indexAxis: 'y', // Fuerza el gráfico de barras horizontales
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
@@ -721,7 +728,7 @@
                             grid: { color: 'rgba(51, 65, 85, 0.1)' } 
                         },
                         y: { 
-                            ticks: { color: '#cbd5e1', font: { size: 10, weight: 'bold' } }, 
+                            ticks: { color: '#cbd5e1', font: { size: 11, weight: 'bold' } }, 
                             grid: { display: false } 
                         }
                     },
@@ -730,7 +737,9 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return ` $${context.raw.toLocaleString('es-AR')}`;
+                                    const item = listaOrdenada[context.dataIndex];
+                                    if (!item) return '';
+                                    return ` AR$ ${item.monto.toLocaleString('es-AR')} (${item.pct}%)`;
                                 }
                             }
                         }

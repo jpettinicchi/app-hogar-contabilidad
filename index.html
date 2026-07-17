@@ -95,12 +95,29 @@
                 </button>
             </div>
             
-            <!-- FILTRO TEMPORAL GLOBAL -->
-            <div class="flex items-center gap-2 w-full sm:w-auto bg-slate-800 p-1 rounded-xl border border-slate-700">
-                <select id="filtro-temporal" onchange="cargarTodo()" class="bg-transparent text-sm font-semibold focus:outline-none pr-8 pl-2 py-1 cursor-pointer text-slate-200">
-                    <option value="actual">📅 Mes Actual</option>
-                    <option value="proyectado">🔮 Vista Proyecciones (12 Meses)</option>
-                    <option value="anual">📊 Acumulado Anual</option>
+            <!-- SELECTORES DE MES Y AÑO DINÁMICOS SOLICITADOS -->
+            <div class="flex items-center gap-2 w-full sm:w-auto bg-slate-800 p-1.5 rounded-xl border border-slate-700 text-xs font-semibold">
+                <span class="text-slate-400 pl-1"><i class="fa-solid fa-calendar-days"></i> Filtrar:</span>
+                <select id="filtro-mes" onchange="cargarTodo()" class="bg-transparent focus:outline-none cursor-pointer text-slate-200">
+                    <option value="01">Enero</option>
+                    <option value="02">Febrero</option>
+                    <option value="03">Marzo</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Mayo</option>
+                    <option value="06">Junio</option>
+                    <option value="07">Julio</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+                <span class="text-slate-600">|</span>
+                <select id="filtro-anio" onchange="cargarTodo()" class="bg-transparent focus:outline-none cursor-pointer text-slate-200 pr-1">
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
                 </select>
             </div>
         </div>
@@ -154,13 +171,14 @@
         <div id="tab-dashboard" class="tab-content space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-6">
+                    <!-- REGRESO DEL GRÁFICO DE TORTA DE DISTRIBUCIÓN -->
                     <div class="bg-darkCard p-4 rounded-2xl border border-slate-800 flex flex-col items-center">
-                        <h4 class="text-sm font-bold text-slate-300 self-start mb-4">🔮 Distribución de Gastos</h4>
+                        <h4 class="text-sm font-bold text-slate-300 self-start mb-4">🔮 Distribución de Gastos (Dinámico por Mes/Año elegido)</h4>
                         <div class="w-full max-w-[260px]">
                             <canvas id="chartGastos"></canvas>
                         </div>
                     </div>
-                    <!-- GRÁFICO DE BARRAS EVOLUTIVO -->
+                    <!-- GRÁFICO DE BARRAS EVOLUTIVO ANUAL HISTÓRICO -->
                     <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
                         <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Planificación Anual (Ingresos vs Gastos Fijos + Variables)</h4>
                         <div class="w-full h-56">
@@ -288,7 +306,7 @@
         <div id="tab-movimientos" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos del Mes Corriente (Variables)</h3>
+                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos del Mes Seleccionado (Variables)</h3>
                     <div class="overflow-x-auto max-h-[450px] overflow-y-auto pr-1" id="lista-ejecutados"></div>
                 </div>
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
@@ -300,7 +318,6 @@
     </main>
 
     <script>
-        // Cargo inicialmente la matriz nativa unida con lo que el usuario haya expandido en LocalStorage
         let matrizConceptos = JSON.parse(localStorage.getItem('hogar_matriz_conceptos')) || {
             "Casa": ["Hipoteca", "Seguro Hipoteca", "Cuenta BNA", "Expensas", "Deuda 42,000 usd+cred", "Pinturerias", "Colchones", "Reparaciones Casa"],
             "Comida": ["Verduleria", "Panaderia /pastas / Hel", "Pescado", "Mayorista", "Supermerkados", "Fiambres", "Frutos secos", "Carne / pollo"],
@@ -334,9 +351,14 @@
         const nombresMesesLetra = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
         document.addEventListener("DOMContentLoaded", () => {
-            const hoy = new Date().toISOString().split('T')[0];
-            document.getElementById('gasto-fecha').value = hoy;
-            document.getElementById('ingreso-fecha').value = hoy;
+            const hoy = new Date();
+            
+            // Seteamos por defecto en los filtros el mes y año actuales reales
+            document.getElementById('filtro-mes').value = String(hoy.getMonth() + 1).padStart(2, '0');
+            document.getElementById('filtro-anio').value = String(hoy.getFullYear());
+
+            document.getElementById('gasto-fecha').value = hoy.toISOString().split('T')[0];
+            document.getElementById('ingreso-fecha').value = hoy.toISOString().split('T')[0];
 
             inicializarSelectorCategoriasGasto();
             intentarConexionAutomatica();
@@ -351,12 +373,10 @@
             });
         }
 
-        // --- GESTIÓN DE NUEVAS ETIQUETAS DINÁMICAS ---
         function guardarNuevaEtiqueta() {
             const nombre = document.getElementById('nueva-etiqueta-nombre').value.trim();
             if (!nombre) return alert("Por favor ingresá un nombre válido.");
             
-            // Si no existe la categoría, la creo vacía para que reciba cualquier entrada de texto libre
             if (!matrizConceptos[nombre]) {
                 matrizConceptos[nombre] = [];
                 localStorage.setItem('hogar_matriz_conceptos', JSON.stringify(matrizConceptos));
@@ -441,7 +461,6 @@
             } catch (err) { console.error(err); }
         }
 
-        // --- FUNCIÓN DE ELIMINACIÓN ASÍNCRONA DESDE LA CRUCECITA × ---
         async function borrarMovimientoLocal(idRegistro) {
             if (!idRegistro) return;
             if (!confirm("¿Estás seguro de que querés eliminar este movimiento por completo?")) return;
@@ -498,7 +517,6 @@
             const tipoGastoSeleccionado = document.getElementById('gasto-tipo').value;
             const conceptoEscrito = document.getElementById('gasto-concepto-libre').value.trim();
 
-            // Si el concepto escrito no está en la base interna de sugerencias, lo guardo para que aparezca después
             if (matrizConceptos[tipoGastoSeleccionado] && !matrizConceptos[tipoGastoSeleccionado].includes(conceptoEscrito)) {
                 matrizConceptos[tipoGastoSeleccionado].push(conceptoEscrito);
                 localStorage.setItem('hogar_matriz_conceptos', JSON.stringify(matrizConceptos));
@@ -552,10 +570,9 @@
         }
 
         function procesarYRenderizarTableros() {
-            const filtro = document.getElementById('filtro-temporal').value;
-            const hoy = new Date();
-            const mesActualStr = String(hoy.getMonth() + 1).padStart(2, '0');
-            const anioActualStr = String(hoy.getFullYear());
+            // Capturamos el mes y año elegidos quirúrgicamente por el usuario
+            const mesSeleccionadoStr = document.getElementById('filtro-mes').value;
+            const anioSeleccionadoStr = document.getElementById('filtro-anio').value;
 
             let ingresosTotales = 0; let gastosTotales = 0; let deduccionesSalario = 0; let gastoNoNecesario = 0;
             let distribuciónCategorias = {}; let htmlEjecutados = ""; let htmlProyectados = "";
@@ -574,7 +591,9 @@
 
             globalMovimientos.forEach(mov => {
                 const parts = mov.fecha.split('-');
-                if (parts[0] !== anioActualStr) return;
+                
+                // Las barras históricas de abajo siempre procesan el año seleccionado
+                if (parts[0] !== anioSeleccionadoStr) return;
                 
                 const mesIndex = parseInt(parts[1]) - 1;
                 const tagMesLetra = nombresMesesLetra[mesIndex];
@@ -585,7 +604,8 @@
                     bolsaGastosMeses[tagMesLetra] += mov.monto_pesos;
                 }
 
-                if (filtro !== 'anual' && parts[1] !== mesActualStr) return;
+                // FILTRO QUIRÚRGICO DE LA TORTA Y CONTADORES: Solo pasa el mes seleccionado exacto
+                if (parts[1] !== mesSeleccionadoStr) return;
 
                 if (mov.tipo_movimiento === "Gasto") {
                     let itemHtml = `
@@ -603,7 +623,6 @@
                             <div class="text-right flex items-center gap-2">
                                 <span class="text-[10px] text-slate-500 font-mono font-bold">AR$</span>
                                 <input type="number" value="${mov.monto_pesos}" onchange="modificarMontoLocal('${mov.id}', this.value)" class="w-24 bg-slate-950 border border-slate-700 rounded text-right px-1 font-mono font-bold text-slate-100 focus:border-blue-500 focus:outline-none">
-                                <!-- CRUCECITA ELIMINAR REGISTRO -->
                                 <button onclick="borrarMovimientoLocal('${mov.id}')" class="text-slate-500 hover:text-red-500 font-bold text-sm ml-1 transition-colors px-1" title="Eliminar este gasto">×</button>
                             </div>
                         </div>
@@ -622,13 +641,15 @@
                 }
             });
 
+            // Arrastre inteligente de costos fijos de plantilla si no fueron cargados manualmente
+            const numMesFiltro = parseInt(mesSeleccionadoStr);
             nombresMesesLetra.forEach((m, idx) => {
-                const numMesFiltro = idx + 1;
+                const loopMes = idx + 1;
                 fijosUnicosPlantilla.forEach(fijo => {
-                    let yaExisteReal = globalMovimientos.some(mReal => mReal.concepto === fijo.concepto && parseInt(mReal.fecha.split('-')[1]) === numMesFiltro);
+                    let yaExisteReal = globalMovimientos.some(mReal => mReal.concepto === fijo.concepto && parseInt(mReal.fecha.split('-')[1]) === loopMes && mReal.fecha.split('-')[0] === anioSeleccionadoStr);
                     if (!yaExisteReal) {
                         bolsaGastosMeses[m] += fijo.monto_pesos;
-                        if (filtro === "proyectado") {
+                        if (loopMes === numMesFiltro) {
                             gastosTotales += fijo.monto_pesos;
                             distribuciónCategorias[fijo.tipo_gasto] = (distribuciónCategorias[fijo.tipo_gasto] || 0) + fijo.monto_pesos;
                         }
@@ -647,11 +668,11 @@
             document.getElementById('card-no-necesario').textContent = `$${gastoNoNecesario.toLocaleString('es-AR')}`;
             document.getElementById('card-ahorro-pct').textContent = `${pctAhorro}% del ingreso`;
 
-            document.getElementById('lista-ejecutados').innerHTML = htmlEjecutados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos variables este mes.</p>';
-            document.getElementById('lista-proyectados').innerHTML = htmlProyectados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos fijos proyectados.</p>';
+            document.getElementById('lista-ejecutados').innerHTML = htmlEjecutados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos variables registrados en este período.</p>';
+            document.getElementById('lista-proyectados').innerHTML = htmlProyectados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos fijos en este período.</p>';
 
             document.getElementById('resumen-texto-dashboard').innerHTML = `
-                <div class="flex justify-between border-b border-slate-800 pb-2"><span>💰 Ingresos Totales de este mes:</span><span class="font-bold text-emerald-400">$${ingresosTotales.toLocaleString('es-AR')}</span></div>
+                <div class="flex justify-between border-b border-slate-800 pb-2"><span>💰 Ingresos Totales de este período:</span><span class="font-bold text-emerald-400">$${ingresosTotales.toLocaleString('es-AR')}</span></div>
                 <div class="flex justify-between border-b border-slate-800 pb-2"><span>💼 Salario de Bolsillo Disponible:</span><span class="font-black text-cyan-400">$${salarioNetoBolsillo.toLocaleString('es-AR')}</span></div>
                 <div class="flex justify-between border-b border-slate-800 pb-2"><span>🛒 Compromiso de Gastos (Fijos + Var):</span><span class="font-bold text-slate-200">$${gastosTotales.toLocaleString('es-AR')}</span></div>
                 <div class="flex justify-between border-b border-slate-800 pb-2 text-amber-400"><span>🍿 Erogación No Necesaria:</span><span>$${gastoNoNecesario.toLocaleString('es-AR')}</span></div>
@@ -667,13 +688,26 @@
         function renderizarGraficoDonut(dataDistribucion) {
             const ctx = document.getElementById('chartGastos').getContext('2d');
             if (chartInstance) chartInstance.destroy();
+            
+            const etiquetas = Object.keys(dataDistribucion);
+            const valores = Object.values(dataDistribucion);
+
             chartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: Object.keys(dataDistribucion),
-                    datasets: [{ data: Object.values(dataDistribucion), backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4'], borderWidth: 1, borderColor: '#1e293b' }]
+                    labels: etiquetas.length === 0 ? ['Sin Gastos'] : etiquetas,
+                    datasets: [{ 
+                        data: valores.length === 0 ? [1] : valores, 
+                        backgroundColor: etiquetas.length === 0 ? ['#334155'] : ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899', '#f97316'], 
+                        borderWidth: 1, 
+                        borderColor: '#1e293b' 
+                    }]
                 },
-                options: { responsive: true, cutout: '74%', plugins: { legend: { display: false } } }
+                options: { 
+                    responsive: true, 
+                    cutout: '74%', 
+                    plugins: { legend: { display: false } } 
+                }
             });
         }
 
@@ -686,7 +720,7 @@
                     labels: nombresMesesLetra,
                     datasets: [
                         { label: 'Ingresos ($)', data: Object.values(ingresos), backgroundColor: '#10b981', borderRadius: 4 },
-                        { label: 'Gastos Proyectados ($) [Fijos Incluidos]', data: Object.values(gastos), backgroundColor: '#ef4444', borderRadius: 4 }
+                        { label: 'Gastos ($)', data: Object.values(gastos), backgroundColor: '#ef4444', borderRadius: 4 }
                     ]
                 },
                 options: {

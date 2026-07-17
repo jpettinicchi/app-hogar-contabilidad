@@ -95,7 +95,7 @@
                 </button>
             </div>
             
-            <!-- SELECTORES DE MES Y AÑO DINÁMICOS SOLICITADOS -->
+            <!-- SELECTORES DE MES Y AÑO DINÁMICOS -->
             <div class="flex items-center gap-2 w-full sm:w-auto bg-slate-800 p-1.5 rounded-xl border border-slate-700 text-xs font-semibold">
                 <span class="text-slate-400 pl-1"><i class="fa-solid fa-calendar-days"></i> Filtrar:</span>
                 <select id="filtro-mes" onchange="cargarTodo()" class="bg-transparent focus:outline-none cursor-pointer text-slate-200">
@@ -171,16 +171,19 @@
         <div id="tab-dashboard" class="tab-content space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-6">
-                    <!-- REGRESO DEL GRÁFICO DE TORTA DE DISTRIBUCIÓN -->
-                    <div class="bg-darkCard p-4 rounded-2xl border border-slate-800 flex flex-col items-center">
-                        <h4 class="text-sm font-bold text-slate-300 self-start mb-4">🔮 Distribución de Gastos (Dinámico por Mes/Año elegido)</h4>
-                        <div class="w-full max-w-[260px]">
-                            <canvas id="chartGastos"></canvas>
+                    <!-- NUEVO GRÁFICO DE BARRAS HORIZONTALES ORDENADO DE MAYOR A MENOR -->
+                    <div class="bg-darkCard p-5 rounded-2xl border border-slate-800">
+                        <h4 class="text-sm font-bold text-slate-300 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-bar text-cyan-400"></i> Distribución de Gastos (De Mayor a Menor)
+                        </h4>
+                        <p class="text-[11px] text-slate-400 mb-4">Muestra qué etiquetas impactaron más en el mes seleccionado.</p>
+                        <div class="w-full h-64">
+                            <canvas id="chartGastosRanking"></canvas>
                         </div>
                     </div>
-                    <!-- GRÁFICO DE BARRAS EVOLUTIVO ANUAL HISTÓRICO -->
+                    <!-- GRÁFICO DE BARRAS EVOLUTIVO ANUAL -->
                     <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                        <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Planificación Anual (Ingresos vs Gastos Fijos + Variables)</h4>
+                        <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Planificación Anual (Ingresos vs Gastos)</h4>
                         <div class="w-full h-56">
                             <canvas id="chartEvolucionMensual"></canvas>
                         </div>
@@ -347,13 +350,11 @@
         };
 
         let SB_URL = ""; let SB_KEY = ""; let globalMovimientos = []; 
-        let chartInstance = null; let chartBarrasInstance = null;
+        let chartRankingInstance = null; let chartBarrasInstance = null;
         const nombresMesesLetra = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
         document.addEventListener("DOMContentLoaded", () => {
             const hoy = new Date();
-            
-            // Seteamos por defecto en los filtros el mes y año actuales reales
             document.getElementById('filtro-mes').value = String(hoy.getMonth() + 1).padStart(2, '0');
             document.getElementById('filtro-anio').value = String(hoy.getFullYear());
 
@@ -570,7 +571,6 @@
         }
 
         function procesarYRenderizarTableros() {
-            // Capturamos el mes y año elegidos quirúrgicamente por el usuario
             const mesSeleccionadoStr = document.getElementById('filtro-mes').value;
             const anioSeleccionadoStr = document.getElementById('filtro-anio').value;
 
@@ -591,8 +591,6 @@
 
             globalMovimientos.forEach(mov => {
                 const parts = mov.fecha.split('-');
-                
-                // Las barras históricas de abajo siempre procesan el año seleccionado
                 if (parts[0] !== anioSeleccionadoStr) return;
                 
                 const mesIndex = parseInt(parts[1]) - 1;
@@ -604,7 +602,6 @@
                     bolsaGastosMeses[tagMesLetra] += mov.monto_pesos;
                 }
 
-                // FILTRO QUIRÚRGICO DE LA TORTA Y CONTADORES: Solo pasa el mes seleccionado exacto
                 if (parts[1] !== mesSeleccionadoStr) return;
 
                 if (mov.tipo_movimiento === "Gasto") {
@@ -641,7 +638,6 @@
                 }
             });
 
-            // Arrastre inteligente de costos fijos de plantilla si no fueron cargados manualmente
             const numMesFiltro = parseInt(mesSeleccionadoStr);
             nombresMesesLetra.forEach((m, idx) => {
                 const loopMes = idx + 1;
@@ -681,32 +677,64 @@
                 </div>
             `;
 
-            renderizarGraficoDonut(distribuciónCategorias);
+            // Renderizado del nuevo ranking horizontal dinámico ordenado de mayor a menor
+            renderizarGraficoRankingHorizontal(distribuciónCategorias);
             renderizarGraficoBarrasEvolutivo(bolsaIngresosMeses, bolsaGastosMeses);
         }
 
-        function renderizarGraficoDonut(dataDistribucion) {
-            const ctx = document.getElementById('chartGastos').getContext('2d');
+        // --- FUNCIÓN MODIFICADA: BARRAS HORIZONTALES DINÁMICAS EN LUGAR DE TORTA ---
+        function renderizarGraficoRankingHorizontal(dataDistribucion) {
+            const ctx = document.getElementById('chartGastosRanking').getContext('2d');
             if (chartInstance) chartInstance.destroy();
-            
-            const etiquetas = Object.keys(dataDistribucion);
-            const valores = Object.values(dataDistribucion);
 
+            // 1. Convertimos el objeto a un array de pares [categoría, monto]
+            let listaOrdenada = Object.keys(dataDistribucion).map(cat => {
+                return { categoria: cat, monto: dataDistribucion[cat] };
+            });
+
+            // 2. Lo ordenamos estrictamente de Mayor a Menor monto
+            listaOrdenada.sort((a, b) => b.monto - a.monto);
+
+            // 3. Extraemos las etiquetas y los valores ordenados
+            const etiquetas = listaOrdenada.map(item => item.categoria);
+            const valores = listaOrdenada.map(item => item.monto);
+
+            // 4. Dibujamos el nuevo gráfico de tipo 'bar' horizontal (indexAxis: 'y')
             chartInstance = new Chart(ctx, {
-                type: 'doughnut',
+                type: 'bar',
                 data: {
-                    labels: etiquetas.length === 0 ? ['Sin Gastos'] : etiquetas,
-                    datasets: [{ 
-                        data: valores.length === 0 ? [1] : valores, 
-                        backgroundColor: etiquetas.length === 0 ? ['#334155'] : ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899', '#f97316'], 
-                        borderWidth: 1, 
-                        borderColor: '#1e293b' 
+                    labels: etiquetas.length === 0 ? ['Sin movimientos'] : etiquetas,
+                    datasets: [{
+                        data: valores.length === 0 ? [0] : valores,
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 5,
+                        barPercentage: 0.75
                     }]
                 },
-                options: { 
-                    responsive: true, 
-                    cutout: '74%', 
-                    plugins: { legend: { display: false } } 
+                options: {
+                    indexAxis: 'y', // Hace que las barras sean horizontales
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { 
+                            ticks: { color: '#64748b', font: { size: 9 } }, 
+                            grid: { color: 'rgba(51, 65, 85, 0.1)' } 
+                        },
+                        y: { 
+                            ticks: { color: '#cbd5e1', font: { size: 10, weight: 'bold' } }, 
+                            grid: { display: false } 
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` $${context.raw.toLocaleString('es-AR')}`;
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }

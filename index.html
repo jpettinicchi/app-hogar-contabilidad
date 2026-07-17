@@ -58,6 +58,24 @@
         </div>
     </div>
 
+    <!-- MODAL PARA NUEVA CATEGORÍA/ETIQUETA PERSONALIZADA -->
+    <div id="modal-nueva-etiqueta" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-darkCard p-6 rounded-2xl max-w-sm w-full border border-slate-700 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center gap-2 border-b border-slate-700 pb-2">
+                <span class="text-lg">🏷️</span>
+                <h4 class="text-sm font-bold text-slate-200">Crear Nueva Categoría</h4>
+            </div>
+            <div>
+                <label class="block text-slate-400 mb-1 font-semibold">Nombre de la Categoría</label>
+                <input type="text" id="nueva-etiqueta-nombre" placeholder="Ej: Computadoras, Mobiliario" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="guardarNuevaEtiqueta()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-2.5 rounded-xl font-bold text-sm text-white transition-all shadow-md">Guardar</button>
+                <button onclick="document.getElementById('modal-nueva-etiqueta').classList.add('hidden')" class="w-full bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl text-slate-400 font-semibold">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- HEADER / BARRA SUPERIOR -->
     <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-40 px-4 py-3">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
@@ -185,16 +203,18 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Tipo de Gasto *</label>
-                        <select id="gasto-tipo" required onchange="actualizarConceptosGasto()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                            <option value="">Seleccionar tipo...</option>
-                        </select>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Tipo de Gasto / Etiqueta *</label>
+                        <div class="flex gap-1.5">
+                            <select id="gasto-tipo" required onchange="actualizarConceptosGasto()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                                <option value="">Seleccionar tipo...</option>
+                            </select>
+                            <button type="button" onclick="document.getElementById('modal-nueva-etiqueta').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-500 px-3 rounded-xl text-white font-bold text-sm transition-all shadow-md" title="Añadir nueva categoría">+</button>
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Concepto *</label>
-                        <select id="gasto-concepto" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                            <option value="">Primero seleccionar tipo...</option>
-                        </select>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Concepto / Detalle libre *</label>
+                        <input type="text" id="gasto-concepto-libre" required placeholder="Ej: Computadora Dell, Silla Oficina" list="datalist-conceptos" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-100">
+                        <datalist id="datalist-conceptos"></datalist>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Monto ($) *</label>
@@ -268,11 +288,11 @@
         <div id="tab-movimientos" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos del Mes Corriente</h3>
+                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos del Mes Corriente (Variables)</h3>
                     <div class="overflow-x-auto max-h-[450px] overflow-y-auto pr-1" id="lista-ejecutados"></div>
                 </div>
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Cronograma de Gastos Proyectados (Próximos 12 Meses)</h3>
+                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Cronograma de Gastos Proyectados (Fijos Anuales)</h3>
                     <div class="overflow-x-auto max-h-[450px] overflow-y-auto pr-1" id="lista-proyectados"></div>
                 </div>
             </div>
@@ -280,7 +300,8 @@
     </main>
 
     <script>
-        const matrizConceptos = {
+        // Cargo inicialmente la matriz nativa unida con lo que el usuario haya expandido en LocalStorage
+        let matrizConceptos = JSON.parse(localStorage.getItem('hogar_matriz_conceptos')) || {
             "Casa": ["Hipoteca", "Seguro Hipoteca", "Cuenta BNA", "Expensas", "Deuda 42,000 usd+cred", "Pinturerias", "Colchones", "Reparaciones Casa"],
             "Comida": ["Verduleria", "Panaderia /pastas / Hel", "Pescado", "Mayorista", "Supermerkados", "Fiambres", "Frutos secos", "Carne / pollo"],
             "Muebles/Equipos": ["Electrodomesticos", "Essen"],
@@ -317,13 +338,36 @@
             document.getElementById('gasto-fecha').value = hoy;
             document.getElementById('ingreso-fecha').value = hoy;
 
+            inicializarSelectorCategoriasGasto();
+            intentarConexionAutomatica();
+        });
+
+        function inicializarSelectorCategoriasGasto() {
             const tGastoSelect = document.getElementById('gasto-tipo');
+            tGastoSelect.innerHTML = '<option value="">Seleccionar tipo...</option>';
             Object.keys(matrizConceptos).forEach(cat => {
                 let op = document.createElement('option'); op.value = cat; op.textContent = cat;
                 tGastoSelect.appendChild(op);
             });
-            intentarConexionAutomatica();
-        });
+        }
+
+        // --- GESTIÓN DE NUEVAS ETIQUETAS DINÁMICAS ---
+        function guardarNuevaEtiqueta() {
+            const nombre = document.getElementById('nueva-etiqueta-nombre').value.trim();
+            if (!nombre) return alert("Por favor ingresá un nombre válido.");
+            
+            // Si no existe la categoría, la creo vacía para que reciba cualquier entrada de texto libre
+            if (!matrizConceptos[nombre]) {
+                matrizConceptos[nombre] = [];
+                localStorage.setItem('hogar_matriz_conceptos', JSON.stringify(matrizConceptos));
+                inicializarSelectorCategoriasGasto();
+                document.getElementById('gasto-tipo').value = nombre;
+                actualizarConceptosGasto();
+            }
+            
+            document.getElementById('nueva-etiqueta-nombre').value = "";
+            document.getElementById('modal-nueva-etiqueta').classList.add('hidden');
+        }
 
         function intentarConexionAutomatica() {
             const cachedUrl = localStorage.getItem("hogar_sb_url");
@@ -363,12 +407,13 @@
 
         function actualizarConceptosGasto() {
             const tipo = document.getElementById('gasto-tipo').value;
-            const conSelect = document.getElementById('gasto-concepto');
-            conSelect.innerHTML = '<option value="">Seleccionar concepto...</option>';
+            const datalist = document.getElementById('datalist-conceptos');
+            datalist.innerHTML = '';
+            
             if (matrizConceptos[tipo]) {
                 matrizConceptos[tipo].forEach(c => {
-                    let op = document.createElement('option'); op.value = c; op.textContent = c;
-                    conSelect.appendChild(op);
+                    let op = document.createElement('option'); op.value = c;
+                    datalist.appendChild(op);
                 });
             }
         }
@@ -394,6 +439,21 @@
                 globalMovimientos = await res.json();
                 procesarYRenderizarTableros();
             } catch (err) { console.error(err); }
+        }
+
+        // --- FUNCIÓN DE ELIMINACIÓN ASÍNCRONA DESDE LA CRUCECITA × ---
+        async function borrarMovimientoLocal(idRegistro) {
+            if (!idRegistro) return;
+            if (!confirm("¿Estás seguro de que querés eliminar este movimiento por completo?")) return;
+            
+            try {
+                const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar?id=eq.${idRegistro}`, {
+                    method: 'DELETE',
+                    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+                });
+                if (!res.ok) throw new Error(await res.text());
+                cargarTodo();
+            } catch (err) { alert("Error al eliminar el movimiento: " + err.message); }
         }
 
         async function modificarMontoLocal(idRegistro, nuevoMonto) {
@@ -435,15 +495,22 @@
             if (comentarioBase) { partesNota.push(comentarioBase); }
             
             const notaFinal = partesNota.join(' ').trim();
+            const tipoGastoSeleccionado = document.getElementById('gasto-tipo').value;
+            const conceptoEscrito = document.getElementById('gasto-concepto-libre').value.trim();
 
-            // SÚPER BLINDADO: Objeto explícito mapeado campo por campo estrictamente con tu tabla real
+            // Si el concepto escrito no está en la base interna de sugerencias, lo guardo para que aparezca después
+            if (matrizConceptos[tipoGastoSeleccionado] && !matrizConceptos[tipoGastoSeleccionado].includes(conceptoEscrito)) {
+                matrizConceptos[tipoGastoSeleccionado].push(conceptoEscrito);
+                localStorage.setItem('hogar_matriz_conceptos', JSON.stringify(matrizConceptos));
+            }
+
             const payloadGastoLimpio = {
                 fecha: document.getElementById('gasto-fecha').value,
                 tipo_movimiento: "Gasto", 
                 fijo_variable: document.getElementById('gasto-fijo-variable').value,
                 gasto_necesario: document.getElementById('gasto-necesario').value,
-                tipo_gasto: document.getElementById('gasto-tipo').value, 
-                concepto: document.getElementById('gasto-concepto').value,
+                tipo_gasto: tipoGastoSeleccionado, 
+                concepto: conceptoEscrito,
                 monto_pesos: parseFloat(document.getElementById('gasto-monto-pesos').value), 
                 monto_usd: 0,
                 nota: notaFinal
@@ -459,6 +526,7 @@
                 
                 document.getElementById('form-gasto').reset();
                 document.getElementById('gasto-fecha').value = new Date().toISOString().split('T')[0];
+                actualizarConceptosGasto();
                 cargarTodo();
             } catch (err) { alert("Error al guardar: " + err.message); }
         }
@@ -535,6 +603,8 @@
                             <div class="text-right flex items-center gap-2">
                                 <span class="text-[10px] text-slate-500 font-mono font-bold">AR$</span>
                                 <input type="number" value="${mov.monto_pesos}" onchange="modificarMontoLocal('${mov.id}', this.value)" class="w-24 bg-slate-950 border border-slate-700 rounded text-right px-1 font-mono font-bold text-slate-100 focus:border-blue-500 focus:outline-none">
+                                <!-- CRUCECITA ELIMINAR REGISTRO -->
+                                <button onclick="borrarMovimientoLocal('${mov.id}')" class="text-slate-500 hover:text-red-500 font-bold text-sm ml-1 transition-colors px-1" title="Eliminar este gasto">×</button>
                             </div>
                         </div>
                     `;

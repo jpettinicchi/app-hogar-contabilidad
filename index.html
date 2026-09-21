@@ -238,11 +238,11 @@
 
                     <!-- MONTO PESOS Y MONTO UVA -->
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Monto en Pesos ($)</label>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Monto TOTAL en Pesos ($)</label>
                         <input type="number" id="gasto-monto-pesos" step="0.01" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-amber-400 font-bold">Monto en UVAs (Si aplica)</label>
+                        <label class="block text-xs font-semibold mb-1 text-amber-400 font-bold">Monto TOTAL en UVAs (Si aplica)</label>
                         <input type="number" id="gasto-monto-uva" step="0.01" oninput="calcularPesosDesdeUva()" placeholder="Ej: 450" class="w-full bg-slate-900 border border-amber-500/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400 font-bold text-amber-300">
                     </div>
 
@@ -255,8 +255,8 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">Cuotas totales (Vacío si es 1 pago)</label>
-                        <input type="number" id="gasto-cuotas-totales" placeholder="Ej: 6" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Cuotas totales (Vacío o 1 para un pago)</label>
+                        <input type="number" id="gasto-cuotas-totales" placeholder="Ej: 3" min="1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
 
                     <div class="sm:col-span-3">
@@ -509,7 +509,6 @@
             } catch (err) { alert("Error al eliminar el movimiento: " + err.message); }
         }
 
-        // DESESTIMAR / BORRAR UN PROYECTADO LOCALMENTE PARA ESTE MES
         function desestimarProyectado(concepto, anioStr, mesStr) {
             const key = `${concepto}_${anioStr}_${mesStr}`;
             proyectadosDesestimadosMap[key] = true;
@@ -517,7 +516,6 @@
             cargarTodo();
         }
 
-        // GUARDAR O CONFIRMAR UN GASTO PROYECTADO EN SUPABASE
         async function guardarOConfirmarProyectado(concepto, anioStr, mesStr, montoNuevoPesos) {
             const plantilla = globalMovimientos.find(m => m.concepto === concepto && m.fijo_variable === "FIJO");
             if (!plantilla) return;
@@ -573,11 +571,12 @@
             } catch (err) { alert("Error al editar tipo: " + err.message); }
         }
 
+        // NUEVO: GENERADOR DE REGISTROS EN CUOTAS CON DIVISIÓN AUTOMÁTICA
         async function guardarGasto(e) {
             e.preventDefault();
             
             const cTotalesEl = document.getElementById('gasto-cuotas-totales');
-            const cTotales = cTotalesEl ? cTotalesEl.value : '';
+            const totalCuotas = parseInt(cTotalesEl ? cTotalesEl.value : 1) || 1;
             
             const medioPago = document.getElementById('gasto-pago-tarjeta').value;
             const comentarioBase = document.getElementById('gasto-nota').value.trim();
@@ -585,35 +584,10 @@
 
             const fechaCompraStr = document.getElementById('gasto-fecha').value;
             const partesFecha = fechaCompraStr.split('-');
-            let anio = parseInt(partesFecha[0]);
-            let mes = parseInt(partesFecha[1]);
-            let dia = parseInt(partesFecha[2]);
+            let anioBase = parseInt(partesFecha[0]);
+            let mesBase = parseInt(partesFecha[1]);
+            let diaBase = parseInt(partesFecha[2]);
 
-            let fechaEfectiva = fechaCompraStr;
-
-            if (medioPago === "Visa") {
-                if (dia > 8) {
-                    mes += 1;
-                    if (mes > 12) { mes = 1; anio += 1; }
-                }
-                const mesStr = String(mes).padStart(2, '0');
-                fechaEfectiva = `${anio}-${mesStr}-14`;
-            } else if (medioPago === "Amex") {
-                if (dia > 1) {
-                    mes += 1;
-                    if (mes > 12) { mes = 1; anio += 1; }
-                }
-                const mesStr = String(mes).padStart(2, '0');
-                fechaEfectiva = `${anio}-${mesStr}-08`;
-            }
-
-            let partesNota = [];
-            if (cTotales) { partesNota.push(`[Cuotas: ${cTotales}]`); }
-            if (cantUvaInput > 0) { partesNota.push(`[${cantUvaInput} UVAs]`); }
-            if (medioPago !== "Efectivo / Débito") { partesNota.push(`[${medioPago}]`); }
-            if (comentarioBase) { partesNota.push(comentarioBase); }
-            
-            const notaFinal = partesNota.join(' ').trim();
             const tipoGastoSeleccionado = document.getElementById('gasto-tipo').value;
             const conceptoEscrito = document.getElementById('gasto-concepto-libre').value.trim();
 
@@ -622,29 +596,67 @@
                 localStorage.setItem('hogar_matriz_conceptos', JSON.stringify(matrizConceptos));
             }
 
-            let montoPesosFinal = parseFloat(document.getElementById('gasto-monto-pesos').value) || 0;
-            if (montoPesosFinal === 0 && cantUvaInput > 0) {
-                montoPesosFinal = cantUvaInput * valorUvaHoy;
+            let montoTotalPesos = parseFloat(document.getElementById('gasto-monto-pesos').value) || 0;
+            if (montoTotalPesos === 0 && cantUvaInput > 0) {
+                montoTotalPesos = cantUvaInput * valorUvaHoy;
             }
 
-            const payloadGastoLimpio = {
-                fecha: fechaEfectiva,
-                tipo_movimiento: "Gasto", 
-                fijo_variable: document.getElementById('gasto-fijo-variable').value,
-                gasto_necesario: document.getElementById('gasto-necesario').value,
-                tipo_gasto: tipoGastoSeleccionado, 
-                concepto: conceptoEscrito,
-                monto_pesos: montoPesosFinal, 
-                monto_uva: cantUvaInput,
-                monto_usd: 0,
-                nota: notaFinal
-            };
+            // División de montos
+            const montoPorCuotaPesos = montoTotalPesos / totalCuotas;
+            const montoPorCuotaUva = cantUvaInput / totalCuotas;
+
+            let listaPayloads = [];
+
+            for (let i = 0; i < totalCuotas; i++) {
+                let anio = anioBase;
+                let mes = mesBase + i;
+
+                while (mes > 12) {
+                    mes -= 12;
+                    anio += 1;
+                }
+
+                let fechaEfectiva = `${anio}-${String(mes).padStart(2, '0')}-${String(diaBase).padStart(2, '0')}`;
+
+                if (medioPago === "Visa") {
+                    if (diaBase > 8) {
+                        mes += 1;
+                        if (mes > 12) { mes = 1; anio += 1; }
+                    }
+                    fechaEfectiva = `${anio}-${String(mes).padStart(2, '0')}-14`;
+                } else if (medioPago === "Amex") {
+                    if (diaBase > 1) {
+                        mes += 1;
+                        if (mes > 12) { mes = 1; anio += 1; }
+                    }
+                    fechaEfectiva = `${anio}-${String(mes).padStart(2, '0')}-08`;
+                }
+
+                let partesNota = [];
+                if (totalCuotas > 1) { partesNota.push(`[Cuota ${i + 1}/${totalCuotas}]`); }
+                if (montoPorCuotaUva > 0) { partesNota.push(`[${montoPorCuotaUva.toFixed(2)} UVAs]`); }
+                if (medioPago !== "Efectivo / Débito") { partesNota.push(`[${medioPago}]`); }
+                if (comentarioBase) { partesNota.push(comentarioBase); }
+
+                listaPayloads.push({
+                    fecha: fechaEfectiva,
+                    tipo_movimiento: "Gasto", 
+                    fijo_variable: document.getElementById('gasto-fijo-variable').value,
+                    gasto_necesario: document.getElementById('gasto-necesario').value,
+                    tipo_gasto: tipoGastoSeleccionado, 
+                    concepto: conceptoEscrito,
+                    monto_pesos: montoPorCuotaPesos, 
+                    monto_uva: montoPorCuotaUva,
+                    monto_usd: 0,
+                    nota: partesNota.join(' ').trim()
+                });
+            }
 
             try {
                 const res = await fetch(`${SB_URL}/rest/v1/movimientos_hogar`, {
                     method: 'POST', 
                     headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-                    body: JSON.stringify([payloadGastoLimpio])
+                    body: JSON.stringify(listaPayloads)
                 });
                 if (!res.ok) throw new Error(await res.text());
                 

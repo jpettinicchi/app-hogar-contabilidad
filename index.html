@@ -652,7 +652,7 @@
 
             let bolsaIngresosMeses = {}; 
             let bolsaGastosMeses = {};
-            let bolsaUvaMeses = {}; // Colección de cotización UVA para cada mes del año
+            let bolsaUvaMeses = {};
 
             nombresMesesLetra.forEach((m, idx) => { 
                 bolsaIngresosMeses[m] = 0; 
@@ -661,6 +661,17 @@
                 bolsaUvaMeses[m] = obtenerValorUvaDia10(anioSeleccionadoStr, mesStrPadded);
             });
 
+            // 1. Identificar todos los gastos FIJOS únicos cargados en el sistema
+            let fijosUnicosPlantilla = [];
+            globalMovimientos.forEach(m => {
+                if (m.tipo_movimiento === "Gasto" && m.fijo_variable === "FIJO") {
+                    if (!fijosUnicosPlantilla.some(f => f.concepto === m.concepto)) {
+                        fijosUnicosPlantilla.push(m);
+                    }
+                }
+            });
+
+            // 2. Procesar los movimientos reales registrados
             globalMovimientos.forEach(mov => {
                 const parts = mov.fecha.split('-');
                 const anioMov = parts[0];
@@ -717,6 +728,43 @@
 
                     if (mov.fijo_variable === "FIJO") htmlProyectados += itemHtml;
                     else htmlEjecutados += itemHtml;
+                }
+            });
+
+            // 3. Proyectar Fijos faltantes en el mes y año seleccionado (ej: Octubre)
+            fijosUnicosPlantilla.forEach(fijo => {
+                let yaExisteEnEsteMes = globalMovimientos.some(mReal => 
+                    mReal.concepto === fijo.concepto && 
+                    mReal.fecha.split('-')[1] === mesSeleccionadoStr && 
+                    mReal.fecha.split('-')[0] === anioSeleccionadoStr
+                );
+
+                if (!yaExisteEnEsteMes) {
+                    let montoPesosFijoProyectado = fijo.monto_pesos;
+                    if (fijo.monto_uva && parseFloat(fijo.monto_uva) > 0) {
+                        montoPesosFijoProyectado = parseFloat(fijo.monto_uva) * cotizacionUvaDia10Filtro;
+                    }
+
+                    gastosTotales += montoPesosFijoProyectado;
+                    distribuciónCategorias[fijo.tipo_gasto] = (distribuciónCategorias[fijo.tipo_gasto] || 0) + montoPesosFijoProyectado;
+
+                    let detalleUvaStr = (fijo.monto_uva && parseFloat(fijo.monto_uva) > 0) ? ` (${fijo.monto_uva} UVAs)` : '';
+
+                    htmlProyectados += `
+                        <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-xs mb-1.5 opacity-80">
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="font-bold text-slate-200">${fijo.concepto}</span>
+                                    <span class="bg-amber-950/60 text-amber-400 text-[9px] px-1.5 py-0.5 rounded border border-amber-800/50 font-bold">PROYECTADO</span>
+                                </div>
+                                <p class="text-[10px] text-slate-400">${anioSeleccionadoStr}-${mesSeleccionadoStr}-10 · <span class="text-slate-500">${fijo.nota || fijo.tipo_gasto}</span> <span class="text-amber-400 font-semibold">${detalleUvaStr}</span></p>
+                            </div>
+                            <div class="text-right flex items-center gap-2">
+                                <span class="text-[10px] text-slate-500 font-mono font-bold">AR$</span>
+                                <input type="number" value="${montoPesosFijoProyectado.toFixed(2)}" readonly class="w-24 bg-slate-950/50 border border-slate-800 rounded text-right px-1 font-mono font-bold text-slate-400 cursor-not-allowed">
+                            </div>
+                        </div>
+                    `;
                 }
             });
 
@@ -804,7 +852,6 @@
             });
         }
 
-        // --- GRÁFICO COMBINADO: BARRAS + LÍNEA PUNTEADA AMARILLA UVA (EJE SECUNDARIO) ---
         function renderizarGraficoBarrasEvolutivo(ingresos, gastos, uvaValores) {
             const ctx = document.getElementById('chartEvolucionMensual').getContext('2d');
             if (chartBarrasInstance) chartBarrasInstance.destroy();
@@ -833,14 +880,14 @@
                             type: 'line',
                             label: 'UVA Día 10 ($)',
                             data: Object.values(uvaValores),
-                            borderColor: '#f59e0b', // Amarillo / Amber
+                            borderColor: '#f59e0b',
                             borderWidth: 2,
-                            borderDash: [5, 5], // Estilo punteado
+                            borderDash: [5, 5],
                             pointBackgroundColor: '#fbbf24',
                             pointRadius: 3,
                             fill: false,
                             tension: 0.2,
-                            yAxisID: 'y1' // Asignado al eje secundario derecho
+                            yAxisID: 'y1'
                         }
                     ]
                 },
@@ -866,7 +913,7 @@
                                 font: { size: 9, weight: 'bold' },
                                 callback: function(value) { return '$' + value; }
                             },
-                            grid: { display: false } // Para no sobrecargar con líneas dobles
+                            grid: { display: false }
                         }
                     },
                     plugins: { 

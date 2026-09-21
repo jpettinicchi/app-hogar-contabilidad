@@ -171,7 +171,6 @@
         <div id="tab-dashboard" class="tab-content space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-6">
-                    <!-- GRÁFICO DE BARRAS HORIZONTALES -->
                     <div class="bg-darkCard p-5 rounded-2xl border border-slate-800">
                         <h4 class="text-sm font-bold text-slate-300 mb-2 flex items-center gap-2">
                             <i class="fa-solid fa-chart-bar text-cyan-400"></i> Distribución de Gastos (De Mayor a Menor)
@@ -181,7 +180,6 @@
                             <canvas id="chartGastosRanking"></canvas>
                         </div>
                     </div>
-                    <!-- GRÁFICO DE BARRAS EVOLUTIVO ANUAL -->
                     <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
                         <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Planificación Anual (Ingresos vs Gastos)</h4>
                         <div class="w-full h-56">
@@ -190,7 +188,6 @@
                     </div>
                 </div>
 
-                <!-- RESUMEN OPERATIVO -->
                 <div class="bg-darkCard p-5 rounded-2xl border border-slate-800 flex flex-col justify-start">
                     <h4 class="text-sm font-bold text-slate-300 mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
                         <i class="fa-solid fa-receipt text-cyan-400"></i> Resumen Operativo Financiero
@@ -242,7 +239,6 @@
                         <input type="number" id="gasto-monto-pesos" step="0.01" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
 
-                    <!-- SELECTOR DE MEDIO DE PAGO / TARJETA REVISADO -->
                     <div>
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Medio de Pago / Tarjeta *</label>
                         <select id="gasto-pago-tarjeta" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
@@ -352,7 +348,7 @@
         };
 
         let SB_URL = ""; let SB_KEY = ""; let globalMovimientos = []; 
-        let chartInstance = null; let chartBarrasInstance = null;
+        let chartBarrasInstance = null;
         const nombresMesesLetra = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -504,7 +500,6 @@
             } catch (err) { alert("Error al editar tipo: " + err.message); }
         }
 
-        // --- FUNCIÓN GUARDAR GASTO CON LÓGICA EXACTA DE CIERRE DE VISA Y AMEX ---
         async function guardarGasto(e) {
             e.preventDefault();
             const cTotales = document.getElementById('gasto-cuotas-totales').value;
@@ -512,34 +507,28 @@
             const medioPago = document.getElementById('gasto-pago-tarjeta').value;
             const comentarioBase = document.getElementById('gasto-nota').value.trim();
 
-            const fechaCompraStr = document.getElementById('gasto-fecha').value; // Formato YYYY-MM-DD
+            const fechaCompraStr = document.getElementById('gasto-fecha').value;
             const partesFecha = fechaCompraStr.split('-');
             let anio = parseInt(partesFecha[0]);
-            let mes = parseInt(partesFecha[1]); // 1 a 12
+            let mes = parseInt(partesFecha[1]);
             let dia = parseInt(partesFecha[2]);
 
             let fechaEfectiva = fechaCompraStr;
 
-            // CALCULO EXACTO SEGÚN MEDIO DE PAGO
             if (medioPago === "Visa") {
-                // VISA: Cierra el día 8. Vence 6 días después (Día 14).
                 if (dia > 8) {
-                    // Si es posterior al cierre (día 9 en adelante), pasa al mes siguiente
                     mes += 1;
                     if (mes > 12) { mes = 1; anio += 1; }
                 }
                 const mesStr = String(mes).padStart(2, '0');
-                fechaEfectiva = `${anio}-${mesStr}-14`; // Vence el 14 del mes correspondiente
-
+                fechaEfectiva = `${anio}-${mesStr}-14`;
             } else if (medioPago === "Amex") {
-                // AMEX: Cierra el día 1. Vence entre el 8 y el 10 (fijamos día 8).
                 if (dia > 1) {
-                    // Si es del día 2 en adelante, ya es posterior al cierre y pasa al mes siguiente
                     mes += 1;
                     if (mes > 12) { mes = 1; anio += 1; }
                 }
                 const mesStr = String(mes).padStart(2, '0');
-                fechaEfectiva = `${anio}-${mesStr}-08`; // Vence el 8 del mes correspondiente
+                fechaEfectiva = `${anio}-${mesStr}-08`;
             }
 
             let partesNota = [];
@@ -557,7 +546,7 @@
             }
 
             const payloadGastoLimpio = {
-                fecha: fechaEfectiva, // Se guarda con la fecha real de pago/vencimiento
+                fecha: fechaEfectiva,
                 tipo_movimiento: "Gasto", 
                 fijo_variable: document.getElementById('gasto-fijo-variable').value,
                 gasto_necesario: document.getElementById('gasto-necesario').value,
@@ -603,24 +592,22 @@
             } catch (err) { alert("Error al guardar: " + err.message); }
         }
 
+        // --- PROCESAMIENTO CORREGIDO Y SUMA EXACTA DE MOVIMIENTOS ---
         function procesarYRenderizarTableros() {
             const mesSeleccionadoStr = document.getElementById('filtro-mes').value;
             const anioSeleccionadoStr = document.getElementById('filtro-anio').value;
 
-            let ingresosTotales = 0; let gastosTotales = 0; let deduccionesSalario = 0; let gastoNoNecesario = 0;
-            let distribuciónCategorias = {}; let htmlEjecutados = ""; let htmlProyectados = "";
+            let ingresosTotales = 0; 
+            let gastosTotales = 0; 
+            let deduccionesSalario = 0; 
+            let gastoNoNecesario = 0;
+            let distribuciónCategorias = {}; 
+            let htmlEjecutados = ""; 
+            let htmlProyectados = "";
 
-            let bolsaIngresosMeses = {}; let bolsaGastosMeses = {};
+            let bolsaIngresosMeses = {}; 
+            let bolsaGastosMeses = {};
             nombresMesesLetra.forEach(m => { bolsaIngresosMeses[m] = 0; bolsaGastosMeses[m] = 0; });
-
-            let fijosUnicosPlantilla = [];
-            globalMovimientos.forEach(m => {
-                if(m.tipo_movimiento === "Gasto" && m.fijo_variable === "FIJO") {
-                    if (!fijosUnicosPlantilla.some(f => f.concepto === m.concepto)) {
-                        fijosUnicosPlantilla.push(m);
-                    }
-                }
-            });
 
             globalMovimientos.forEach(mov => {
                 const parts = mov.fecha.split('-');
@@ -629,15 +616,25 @@
                 const mesIndex = parseInt(parts[1]) - 1;
                 const tagMesLetra = nombresMesesLetra[mesIndex];
 
+                // Acumulación anual para gráficos
                 if (mov.tipo_movimiento === "Ingreso" && mov.tipo_gasto !== "Impuestos salario") {
                     bolsaIngresosMeses[tagMesLetra] += mov.monto_pesos;
                 } else if (mov.tipo_movimiento === "Gasto") {
                     bolsaGastosMeses[tagMesLetra] += mov.monto_pesos;
                 }
 
+                // FILTRADO EXCLUSIVO POR EL MES SELECCIONADO
                 if (parts[1] !== mesSeleccionadoStr) return;
 
-                if (mov.tipo_movimiento === "Gasto") {
+                if (mov.tipo_movimiento === "Ingreso") {
+                    if (mov.tipo_gasto === "Impuestos salario") deduccionesSalario += mov.monto_pesos;
+                    else ingresosTotales += mov.monto_pesos;
+                } else if (mov.tipo_movimiento === "Gasto") {
+                    // SUMA DIRECTA Y ÚNICA DE GASTOS DEL MES
+                    gastosTotales += mov.monto_pesos;
+                    if (mov.gasto_necesario === "No necesario") gastoNoNecesario += mov.monto_pesos;
+                    distribuciónCategorias[mov.tipo_gasto] = (distribuciónCategorias[mov.tipo_gasto] || 0) + mov.monto_pesos;
+
                     let itemHtml = `
                         <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-xs mb-1.5">
                             <div class="space-y-1">
@@ -657,33 +654,10 @@
                             </div>
                         </div>
                     `;
+
                     if (mov.fijo_variable === "FIJO") htmlProyectados += itemHtml;
                     else htmlEjecutados += itemHtml;
                 }
-
-                if (mov.tipo_movimiento === "Ingreso") {
-                    if (mov.tipo_gasto === "Impuestos salario") deduccionesSalario += mov.monto_pesos;
-                    else ingresosTotales += mov.monto_pesos;
-                } else if (mov.tipo_movimiento === "Gasto") {
-                    gastosTotales += mov.monto_pesos;
-                    if (mov.gasto_necesario === "No necesario") gastoNoNecesario += mov.monto_pesos;
-                    distribuciónCategorias[mov.tipo_gasto] = (distribuciónCategorias[mov.tipo_gasto] || 0) + mov.monto_pesos;
-                }
-            });
-
-            const numMesFiltro = parseInt(mesSeleccionadoStr);
-            nombresMesesLetra.forEach((m, idx) => {
-                const loopMes = idx + 1;
-                fijosUnicosPlantilla.forEach(fijo => {
-                    let yaExisteReal = globalMovimientos.some(mReal => mReal.concepto === fijo.concepto && parseInt(mReal.fecha.split('-')[1]) === loopMes && mReal.fecha.split('-')[0] === anioSeleccionadoStr);
-                    if (!yaExisteReal) {
-                        bolsaGastosMeses[m] += fijo.monto_pesos;
-                        if (loopMes === numMesFiltro) {
-                            gastosTotales += fijo.monto_pesos;
-                            distribuciónCategorias[fijo.tipo_gasto] = (distribuciónCategorias[fijo.tipo_gasto] || 0) + fijo.monto_pesos;
-                        }
-                    }
-                });
             });
 
             const ahorroNeto = ingresosTotales - gastosTotales;
@@ -714,7 +688,6 @@
             renderizarGraficoBarrasEvolutivo(bolsaIngresosMeses, bolsaGastosMeses);
         }
 
-        // --- FUNCIÓN INDEPENDIENTE Y AUTÓNOMA DEL RANKING HORIZONTAL ---
         function renderizarGraficoRankingHorizontal(dataDistribucion) {
             const canvas = document.getElementById('chartGastosRanking');
             if (!canvas) return;

@@ -171,7 +171,7 @@
         <div id="tab-dashboard" class="tab-content space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-6">
-                    <!-- NUEVO GRÁFICO DE BARRAS HORIZONTALES EN REEMPLAZO DE LA TORTA -->
+                    <!-- GRÁFICO DE BARRAS HORIZONTALES -->
                     <div class="bg-darkCard p-5 rounded-2xl border border-slate-800">
                         <h4 class="text-sm font-bold text-slate-300 mb-2 flex items-center gap-2">
                             <i class="fa-solid fa-chart-bar text-cyan-400"></i> Distribución de Gastos (De Mayor a Menor)
@@ -242,11 +242,13 @@
                         <input type="number" id="gasto-monto-pesos" step="0.01" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
 
+                    <!-- SELECTOR DE MEDIO DE PAGO / TARJETA REVISADO -->
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-slate-400">¿Cuándo se paga respecto al cierre?</label>
+                        <label class="block text-xs font-semibold mb-1 text-slate-400">Medio de Pago / Tarjeta *</label>
                         <select id="gasto-pago-tarjeta" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                            <option value="Mes actual">Mes actual</option>
-                            <option value="Posterior al cierre">Posterior al cierre</option>
+                            <option value="Efectivo / Débito">Efectivo / Débito (Mes actual)</option>
+                            <option value="Visa">Tarjeta VISA (Cierra día 8)</option>
+                            <option value="Amex">Tarjeta AMEX (Cierra día 1)</option>
                         </select>
                     </div>
                     <div>
@@ -502,16 +504,47 @@
             } catch (err) { alert("Error al editar tipo: " + err.message); }
         }
 
+        // --- FUNCIÓN GUARDAR GASTO CON LÓGICA EXACTA DE CIERRE DE VISA Y AMEX ---
         async function guardarGasto(e) {
             e.preventDefault();
             const cTotales = document.getElementById('gasto-cuotas-totales').value;
             const cActual = document.getElementById('gasto-cuota-actual').value;
-            const tipoTarjeta = document.getElementById('gasto-pago-tarjeta').value;
+            const medioPago = document.getElementById('gasto-pago-tarjeta').value;
             const comentarioBase = document.getElementById('gasto-nota').value.trim();
+
+            const fechaCompraStr = document.getElementById('gasto-fecha').value; // Formato YYYY-MM-DD
+            const partesFecha = fechaCompraStr.split('-');
+            let anio = parseInt(partesFecha[0]);
+            let mes = parseInt(partesFecha[1]); // 1 a 12
+            let dia = parseInt(partesFecha[2]);
+
+            let fechaEfectiva = fechaCompraStr;
+
+            // CALCULO EXACTO SEGÚN MEDIO DE PAGO
+            if (medioPago === "Visa") {
+                // VISA: Cierra el día 8. Vence 6 días después (Día 14).
+                if (dia > 8) {
+                    // Si es posterior al cierre (día 9 en adelante), pasa al mes siguiente
+                    mes += 1;
+                    if (mes > 12) { mes = 1; anio += 1; }
+                }
+                const mesStr = String(mes).padStart(2, '0');
+                fechaEfectiva = `${anio}-${mesStr}-14`; // Vence el 14 del mes correspondiente
+
+            } else if (medioPago === "Amex") {
+                // AMEX: Cierra el día 1. Vence entre el 8 y el 10 (fijamos día 8).
+                if (dia > 1) {
+                    // Si es del día 2 en adelante, ya es posterior al cierre y pasa al mes siguiente
+                    mes += 1;
+                    if (mes > 12) { mes = 1; anio += 1; }
+                }
+                const mesStr = String(mes).padStart(2, '0');
+                fechaEfectiva = `${anio}-${mesStr}-08`; // Vence el 8 del mes correspondiente
+            }
 
             let partesNota = [];
             if (cTotales) { partesNota.push(`[Cuota ${cActual || 1}/${cTotales}]`); }
-            if (tipoTarjeta === "Posterior al cierre") { partesNota.push(`[Posterior al cierre]`); }
+            if (medioPago !== "Efectivo / Débito") { partesNota.push(`[${medioPago}]`); }
             if (comentarioBase) { partesNota.push(comentarioBase); }
             
             const notaFinal = partesNota.join(' ').trim();
@@ -524,7 +557,7 @@
             }
 
             const payloadGastoLimpio = {
-                fecha: document.getElementById('gasto-fecha').value,
+                fecha: fechaEfectiva, // Se guarda con la fecha real de pago/vencimiento
                 tipo_movimiento: "Gasto", 
                 fijo_variable: document.getElementById('gasto-fijo-variable').value,
                 gasto_necesario: document.getElementById('gasto-necesario').value,
@@ -681,13 +714,12 @@
             renderizarGraficoBarrasEvolutivo(bolsaIngresosMeses, bolsaGastosMeses);
         }
 
-        // --- FUNCIÓN INDEPENDIENTE Y AUTÓNOMA DEL RANKING HORIZONTAL (BLINDADA) ---
+        // --- FUNCIÓN INDEPENDIENTE Y AUTÓNOMA DEL RANKING HORIZONTAL ---
         function renderizarGraficoRankingHorizontal(dataDistribucion) {
             const canvas = document.getElementById('chartGastosRanking');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
 
-            // Busco si ya hay una instancia de gráfico ligada a este canvas y la destruyo
             const chartExistente = Chart.getChart(canvas);
             if (chartExistente) {
                 chartExistente.destroy();
@@ -701,7 +733,6 @@
                 return { categoria: cat, monto: monto, pct: porcentaje };
             });
 
-            // Ordenamiento estricto de Mayor a Menor
             listaOrdenada.sort((a, b) => b.monto - a.monto);
 
             const etiquetas = listaOrdenada.map(item => item.categoria);
@@ -713,13 +744,13 @@
                     labels: etiquetas.length === 0 ? ['Sin movimientos'] : etiquetas,
                     datasets: [{
                         data: valores.length === 0 ? [0] : valores,
-                        backgroundColor: '#0d9488', // Color teal oscuro
+                        backgroundColor: '#0d9488',
                         borderRadius: 4,
                         barPercentage: 0.7
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // Fuerza el gráfico de barras horizontales
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {

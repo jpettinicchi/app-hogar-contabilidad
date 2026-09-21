@@ -571,7 +571,7 @@
             } catch (err) { alert("Error al editar tipo: " + err.message); }
         }
 
-        // NUEVO: GENERADOR DE REGISTROS EN CUOTAS CON DIVISIÓN AUTOMÁTICA
+        // LÓGICA CORREGIDA: CALCULA LA PRIMERA CUOTA Y LUEGO DESPLAZA MES A MES
         async function guardarGasto(e) {
             e.preventDefault();
             
@@ -601,39 +601,44 @@
                 montoTotalPesos = cantUvaInput * valorUvaHoy;
             }
 
-            // División de montos
+            // Cálculo del monto por cuota
             const montoPorCuotaPesos = montoTotalPesos / totalCuotas;
             const montoPorCuotaUva = cantUvaInput / totalCuotas;
 
+            // 1. Determinar el mes y día del PRIMER VENCIMIENTO (Cuota 1)
+            let primerMes = mesBase;
+            let primerAnio = anioBase;
+            let diaVencimiento = diaBase;
+
+            if (medioPago === "Visa") {
+                diaVencimiento = 14;
+                if (diaBase > 8) { primerMes += 1; }
+            } else if (medioPago === "Amex") {
+                diaVencimiento = 8;
+                if (diaBase > 1) { primerMes += 1; }
+            }
+
+            while (primerMes > 12) {
+                primerMes -= 12;
+                primerAnio += 1;
+            }
+
             let listaPayloads = [];
 
+            // 2. Generar cada cuota avanzando un mes correlativo
             for (let i = 0; i < totalCuotas; i++) {
-                let anio = anioBase;
-                let mes = mesBase + i;
+                let curMes = primerMes + i;
+                let curAnio = primerAnio;
 
-                while (mes > 12) {
-                    mes -= 12;
-                    anio += 1;
+                while (curMes > 12) {
+                    curMes -= 12;
+                    curAnio += 1;
                 }
 
-                let fechaEfectiva = `${anio}-${String(mes).padStart(2, '0')}-${String(diaBase).padStart(2, '0')}`;
-
-                if (medioPago === "Visa") {
-                    if (diaBase > 8) {
-                        mes += 1;
-                        if (mes > 12) { mes = 1; anio += 1; }
-                    }
-                    fechaEfectiva = `${anio}-${String(mes).padStart(2, '0')}-14`;
-                } else if (medioPago === "Amex") {
-                    if (diaBase > 1) {
-                        mes += 1;
-                        if (mes > 12) { mes = 1; anio += 1; }
-                    }
-                    fechaEfectiva = `${anio}-${String(mes).padStart(2, '0')}-08`;
-                }
+                const fechaEfectiva = `${curAnio}-${String(curMes).padStart(2, '0')}-${String(diaVencimiento).padStart(2, '0')}`;
 
                 let partesNota = [];
-                if (totalCuotas > 1) { partesNota.push(`[Cuota ${i + 1}/${totalCuotas}]`); }
+                if (totalCuotas > 1) { partesNota.push(`[Cuotas: ${i + 1}/${totalCuotas}]`); }
                 if (montoPorCuotaUva > 0) { partesNota.push(`[${montoPorCuotaUva.toFixed(2)} UVAs]`); }
                 if (medioPago !== "Efectivo / Débito") { partesNota.push(`[${medioPago}]`); }
                 if (comentarioBase) { partesNota.push(comentarioBase); }

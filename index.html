@@ -87,7 +87,7 @@
                         <div class="flex items-center gap-1.5 text-xs text-slate-400">
                             <span id="status-dot" class="w-2 h-2 rounded-full bg-gray-500"></span>
                             <span id="status-text">Detectando conexión...</span>
-                            <span id="uva-indicador" class="ml-2 text-[10px] text-cyan-400 font-mono font-semibold"></span>
+                            <span id="uva-indicador" class="ml-2 text-[10px] text-amber-400 font-mono font-semibold"></span>
                         </div>
                     </div>
                 </div>
@@ -182,7 +182,7 @@
                         </div>
                     </div>
                     <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                        <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Planificación Anual (Ingresos vs Gastos)</h4>
+                        <h4 class="text-sm font-bold text-slate-300 mb-4">📊 Planificación Anual e Índice UVA (Día 10)</h4>
                         <div class="w-full h-56">
                             <canvas id="chartEvolucionMensual"></canvas>
                         </div>
@@ -242,8 +242,8 @@
                         <input type="number" id="gasto-monto-pesos" step="0.01" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold mb-1 text-cyan-400 font-bold">Monto en UVAs (Si aplica)</label>
-                        <input type="number" id="gasto-monto-uva" step="0.01" oninput="calcularPesosDesdeUva()" placeholder="Ej: 450" class="w-full bg-slate-900 border border-cyan-500/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-400 font-bold text-cyan-300">
+                        <label class="block text-xs font-semibold mb-1 text-amber-400 font-bold">Monto en UVAs (Si aplica)</label>
+                        <input type="number" id="gasto-monto-uva" step="0.01" oninput="calcularPesosDesdeUva()" placeholder="Ej: 450" class="w-full bg-slate-900 border border-amber-500/50 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400 font-bold text-amber-300">
                     </div>
 
                     <div>
@@ -378,7 +378,7 @@
                     data.forEach(item => { historialUvaMap[item.fecha] = item.valor; });
                     if (data.length > 0) {
                         valorUvaHoy = data[data.length - 1].valor;
-                        document.getElementById('uva-indicador').textContent = `UVA: $${valorUvaHoy.toLocaleString('es-AR')}`;
+                        document.getElementById('uva-indicador').textContent = `UVA Hoy: $${valorUvaHoy.toLocaleString('es-AR')}`;
                     }
                 }
             } catch (err) { console.log("Usando valor UVA predeterminado."); }
@@ -534,11 +534,9 @@
             } catch (err) { alert("Error al editar tipo: " + err.message); }
         }
 
-        // --- FUNCIÓN DE GUARDADO CORREGIDA Y ROBUSTA ---
         async function guardarGasto(e) {
             e.preventDefault();
             
-            // Leemos de forma segura los campos opcionales
             const cTotalesEl = document.getElementById('gasto-cuotas-totales');
             const cTotales = cTotalesEl ? cTotalesEl.value : '';
             
@@ -654,7 +652,14 @@
 
             let bolsaIngresosMeses = {}; 
             let bolsaGastosMeses = {};
-            nombresMesesLetra.forEach(m => { bolsaIngresosMeses[m] = 0; bolsaGastosMeses[m] = 0; });
+            let bolsaUvaMeses = {}; // Colección de cotización UVA para cada mes del año
+
+            nombresMesesLetra.forEach((m, idx) => { 
+                bolsaIngresosMeses[m] = 0; 
+                bolsaGastosMeses[m] = 0; 
+                const mesStrPadded = String(idx + 1).padStart(2, '0');
+                bolsaUvaMeses[m] = obtenerValorUvaDia10(anioSeleccionadoStr, mesStrPadded);
+            });
 
             globalMovimientos.forEach(mov => {
                 const parts = mov.fecha.split('-');
@@ -700,7 +705,7 @@
                                         <option value="FIJO" ${mov.fijo_variable === 'FIJO' ? 'selected' : ''}>FIJO</option>
                                     </select>
                                 </div>
-                                <p class="text-[10px] text-slate-400">${mov.fecha} · <span class="text-slate-500">${mov.nota || mov.tipo_gasto}</span> <span class="text-cyan-400 font-semibold">${detalleUvaStr}</span></p>
+                                <p class="text-[10px] text-slate-400">${mov.fecha} · <span class="text-slate-500">${mov.nota || mov.tipo_gasto}</span> <span class="text-amber-400 font-semibold">${detalleUvaStr}</span></p>
                             </div>
                             <div class="text-right flex items-center gap-2">
                                 <span class="text-[10px] text-slate-500 font-mono font-bold">AR$</span>
@@ -740,7 +745,7 @@
             `;
 
             renderizarGraficoRankingHorizontal(distribuciónCategorias);
-            renderizarGraficoBarrasEvolutivo(bolsaIngresosMeses, bolsaGastosMeses);
+            renderizarGraficoBarrasEvolutivo(bolsaIngresosMeses, bolsaGastosMeses, bolsaUvaMeses);
         }
 
         function renderizarGraficoRankingHorizontal(dataDistribucion) {
@@ -799,25 +804,87 @@
             });
         }
 
-        function renderizarGraficoBarrasEvolutivo(ingresos, gastos) {
+        // --- GRÁFICO COMBINADO: BARRAS + LÍNEA PUNTEADA AMARILLA UVA (EJE SECUNDARIO) ---
+        function renderizarGraficoBarrasEvolutivo(ingresos, gastos, uvaValores) {
             const ctx = document.getElementById('chartEvolucionMensual').getContext('2d');
             if (chartBarrasInstance) chartBarrasInstance.destroy();
+            
             chartBarrasInstance = new Chart(ctx, {
-                type: 'bar',
                 data: {
                     labels: nombresMesesLetra,
                     datasets: [
-                        { label: 'Ingresos ($)', data: Object.values(ingresos), backgroundColor: '#10b981', borderRadius: 4 },
-                        { label: 'Gastos ($)', data: Object.values(gastos), backgroundColor: '#ef4444', borderRadius: 4 }
+                        { 
+                            type: 'bar',
+                            label: 'Ingresos ($)', 
+                            data: Object.values(ingresos), 
+                            backgroundColor: '#10b981', 
+                            borderRadius: 4,
+                            yAxisID: 'y'
+                        },
+                        { 
+                            type: 'bar',
+                            label: 'Gastos ($)', 
+                            data: Object.values(gastos), 
+                            backgroundColor: '#ef4444', 
+                            borderRadius: 4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            type: 'line',
+                            label: 'UVA Día 10 ($)',
+                            data: Object.values(uvaValores),
+                            borderColor: '#f59e0b', // Amarillo / Amber
+                            borderWidth: 2,
+                            borderDash: [5, 5], // Estilo punteado
+                            pointBackgroundColor: '#fbbf24',
+                            pointRadius: 3,
+                            fill: false,
+                            tension: 0.2,
+                            yAxisID: 'y1' // Asignado al eje secundario derecho
+                        }
                     ]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
+                    responsive: true, 
+                    maintainAspectRatio: false,
                     scales: {
-                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-                        y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(51, 65, 85, 0.1)' } }
+                        x: { 
+                            ticks: { color: '#94a3b8', font: { size: 10 } }, 
+                            grid: { display: false } 
+                        },
+                        y: { 
+                            type: 'linear',
+                            position: 'left',
+                            ticks: { color: '#64748b', font: { size: 9 } }, 
+                            grid: { color: 'rgba(51, 65, 85, 0.1)' } 
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            ticks: { 
+                                color: '#f59e0b', 
+                                font: { size: 9, weight: 'bold' },
+                                callback: function(value) { return '$' + value; }
+                            },
+                            grid: { display: false } // Para no sobrecargar con líneas dobles
+                        }
                     },
-                    plugins: { legend: { display: true, labels: { color: '#cbd5e1', font: { size: 10 } } } }
+                    plugins: { 
+                        legend: { 
+                            display: true, 
+                            labels: { color: '#cbd5e1', font: { size: 10 } } 
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.type === 'line') {
+                                        return ` UVA Día 10: $${context.raw.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+                                    }
+                                    return ` ${context.dataset.label}: $${context.raw.toLocaleString('es-AR')}`;
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }

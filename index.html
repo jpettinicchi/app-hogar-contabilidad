@@ -236,7 +236,7 @@
                         <datalist id="datalist-conceptos"></datalist>
                     </div>
 
-                    <!-- CAMPO MONTO PESOS Y MONTO UVA -->
+                    <!-- MONTO PESOS Y MONTO UVA -->
                     <div>
                         <label class="block text-xs font-semibold mb-1 text-slate-400">Monto en Pesos ($)</label>
                         <input type="number" id="gasto-monto-pesos" step="0.01" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
@@ -352,8 +352,8 @@
 
         let SB_URL = ""; let SB_KEY = ""; let globalMovimientos = []; 
         let chartBarrasInstance = null;
-        let historialUvaMap = {}; // Mapa para guardar fechas y cotizaciones de UVA { 'YYYY-MM-DD': valor }
-        let valorUvaHoy = 1350;
+        let historialUvaMap = {};
+        let valorUvaHoy = 2128.88;
 
         const nombresMesesLetra = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -370,32 +370,23 @@
             intentarConexionAutomatica();
         });
 
-        // --- CONEXIÓN A API PÚBLICA DEL VALOR UVA HISTÓRICO Y EN VIVO ---
         async function cargarSerieUvaEnVivo() {
             try {
                 const res = await fetch('https://api.argentinadatos.com/v1/finanzas/indices/uva');
                 if (res.ok) {
                     const data = await res.json();
-                    data.forEach(item => {
-                        historialUvaMap[item.fecha] = item.valor;
-                    });
+                    data.forEach(item => { historialUvaMap[item.fecha] = item.valor; });
                     if (data.length > 0) {
                         valorUvaHoy = data[data.length - 1].valor;
                         document.getElementById('uva-indicador').textContent = `UVA: $${valorUvaHoy.toLocaleString('es-AR')}`;
                     }
                 }
-            } catch (err) {
-                console.log("No se pudo obtener la serie UVA en vivo, usando respaldo.");
-            }
+            } catch (err) { console.log("Usando valor UVA predeterminado."); }
         }
 
-        // Obtener el valor del día 10 de un mes y año específicos
         function obtenerValorUvaDia10(anioStr, mesStr) {
             const fechaDeseada = `${anioStr}-${mesStr}-10`;
-            if (historialUvaMap[fechaDeseada]) {
-                return historialUvaMap[fechaDeseada];
-            }
-            // Si es una fecha futura o no disponible, toma el valor UVA más reciente conocido
+            if (historialUvaMap[fechaDeseada]) return historialUvaMap[fechaDeseada];
             return valorUvaHoy;
         }
 
@@ -543,10 +534,14 @@
             } catch (err) { alert("Error al editar tipo: " + err.message); }
         }
 
+        // --- FUNCIÓN DE GUARDADO CORREGIDA Y ROBUSTA ---
         async function guardarGasto(e) {
             e.preventDefault();
-            const cTotales = document.getElementById('gasto-cuotas-totales').value;
-            const cActual = document.getElementById('gasto-cuota-actual').value;
+            
+            // Leemos de forma segura los campos opcionales
+            const cTotalesEl = document.getElementById('gasto-cuotas-totales');
+            const cTotales = cTotalesEl ? cTotalesEl.value : '';
+            
             const medioPago = document.getElementById('gasto-pago-tarjeta').value;
             const comentarioBase = document.getElementById('gasto-nota').value.trim();
             const cantUvaInput = parseFloat(document.getElementById('gasto-monto-uva').value) || 0;
@@ -576,7 +571,7 @@
             }
 
             let partesNota = [];
-            if (cTotales) { partesNota.push(`[Cuota ${cActual || 1}/${cTotales}]`); }
+            if (cTotales) { partesNota.push(`[Cuotas: ${cTotales}]`); }
             if (cantUvaInput > 0) { partesNota.push(`[${cantUvaInput} UVAs]`); }
             if (medioPago !== "Efectivo / Débito") { partesNota.push(`[${medioPago}]`); }
             if (comentarioBase) { partesNota.push(comentarioBase); }
@@ -591,6 +586,9 @@
             }
 
             let montoPesosFinal = parseFloat(document.getElementById('gasto-monto-pesos').value) || 0;
+            if (montoPesosFinal === 0 && cantUvaInput > 0) {
+                montoPesosFinal = cantUvaInput * valorUvaHoy;
+            }
 
             const payloadGastoLimpio = {
                 fecha: fechaEfectiva,
@@ -640,12 +638,10 @@
             } catch (err) { alert("Error al guardar: " + err.message); }
         }
 
-        // --- PROCESAMIENTO DINÁMICO DE HIPOTECA Y VALOR DEL UVA AL DÍA 10 DE CADA MES ---
         function procesarYRenderizarTableros() {
             const mesSeleccionadoStr = document.getElementById('filtro-mes').value;
             const anioSeleccionadoStr = document.getElementById('filtro-anio').value;
 
-            // Cotización del UVA correspondiente exactamente al día 10 del mes y año filtrado
             const cotizacionUvaDia10Filtro = obtenerValorUvaDia10(anioSeleccionadoStr, mesSeleccionadoStr);
 
             let ingresosTotales = 0; 
@@ -665,7 +661,6 @@
                 const anioMov = parts[0];
                 const mesMovStr = parts[1];
 
-                // Si el gasto tiene fijada una cuota en UVAs, recalculamos el monto en pesos para ese período
                 let montoPesosEfectivo = mov.monto_pesos;
                 if (mov.monto_uva && parseFloat(mov.monto_uva) > 0) {
                     const cotizUvaMes = obtenerValorUvaDia10(anioMov, mesMovStr);
@@ -683,7 +678,6 @@
                     }
                 }
 
-                // FILTRADO EXCLUSIVO PARA EL MES Y AÑO SELECCIONADO
                 if (anioMov !== anioSeleccionadoStr || mesMovStr !== mesSeleccionadoStr) return;
 
                 if (mov.tipo_movimiento === "Ingreso") {
@@ -694,7 +688,7 @@
                     if (mov.gasto_necesario === "No necesario") gastoNoNecesario += montoPesosEfectivo;
                     distribuciónCategorias[mov.tipo_gasto] = (distribuciónCategorias[mov.tipo_gasto] || 0) + montoPesosEfectivo;
 
-                    let detalleUvaStr = (mov.monto_uva && parseFloat(mov.monto_uva) > 0) ? ` (${mov.monto_uva} UVAs @ $${cotizacionUvaDia10Filtro.toFixed(2)})` : '';
+                    let detalleUvaStr = (mov.monto_uva && parseFloat(mov.monto_uva) > 0) ? ` (${mov.monto_uva} UVAs)` : '';
 
                     let itemHtml = `
                         <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 text-xs mb-1.5">
@@ -755,9 +749,7 @@
             const ctx = canvas.getContext('2d');
 
             const chartExistente = Chart.getChart(canvas);
-            if (chartExistente) {
-                chartExistente.destroy();
-            }
+            if (chartExistente) chartExistente.destroy();
 
             const totalGastoMes = Object.values(dataDistribucion).reduce((a, b) => a + b, 0);
 
@@ -788,14 +780,8 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { 
-                            ticks: { color: '#64748b', font: { size: 9 } }, 
-                            grid: { color: 'rgba(51, 65, 85, 0.1)' } 
-                        },
-                        y: { 
-                            ticks: { color: '#cbd5e1', font: { size: 11, weight: 'bold' } }, 
-                            grid: { display: false } 
-                        }
+                        x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(51, 65, 85, 0.1)' } },
+                        y: { ticks: { color: '#cbd5e1', font: { size: 11, weight: 'bold' } }, grid: { display: false } }
                     },
                     plugins: {
                         legend: { display: false },

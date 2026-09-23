@@ -306,15 +306,19 @@
             </div>
         </div>
 
-        <!-- PESTAÑA 4: LISTADO DE MOVIMIENTOS -->
+        <!-- PESTAÑA 4: LISTADO DE MOVIMIENTOS (EN 3 COLUMNAS: INGRESOS, GASTOS VAR, GASTOS FIJOS) -->
         <div id="tab-movimientos" class="tab-content hidden space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Gastos del Mes Seleccionado (Variables)</h3>
+                    <h3 class="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Ingresos del Mes</h3>
+                    <div class="overflow-x-auto max-h-[450px] overflow-y-auto pr-1" id="lista-ingresos"></div>
+                </div>
+                <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
+                    <h3 class="text-sm font-bold text-rose-400 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Gastos Variables</h3>
                     <div class="overflow-x-auto max-h-[450px] overflow-y-auto pr-1" id="lista-ejecutados"></div>
                 </div>
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                    <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Cronograma de Gastos Proyectados (Fijos Anuales)</h3>
+                    <h3 class="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2 border-b border-slate-700 pb-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Gastos Fijos / Proyectados</h3>
                     <div class="overflow-x-auto max-h-[450px] overflow-y-auto pr-1" id="lista-proyectados"></div>
                 </div>
             </div>
@@ -571,7 +575,6 @@
             } catch (err) { alert("Error al editar tipo: " + err.message); }
         }
 
-        // LÓGICA CORREGIDA: CALCULA LA PRIMERA CUOTA Y LUEGO DESPLAZA MES A MES
         async function guardarGasto(e) {
             e.preventDefault();
             
@@ -601,11 +604,9 @@
                 montoTotalPesos = cantUvaInput * valorUvaHoy;
             }
 
-            // Cálculo del monto por cuota
             const montoPorCuotaPesos = montoTotalPesos / totalCuotas;
             const montoPorCuotaUva = cantUvaInput / totalCuotas;
 
-            // 1. Determinar el mes y día del PRIMER VENCIMIENTO (Cuota 1)
             let primerMes = mesBase;
             let primerAnio = anioBase;
             let diaVencimiento = diaBase;
@@ -625,7 +626,6 @@
 
             let listaPayloads = [];
 
-            // 2. Generar cada cuota avanzando un mes correlativo
             for (let i = 0; i < totalCuotas; i++) {
                 let curMes = primerMes + i;
                 let curAnio = primerAnio;
@@ -692,6 +692,7 @@
             } catch (err) { alert("Error al guardar: " + err.message); }
         }
 
+        // --- RENDERIZADO MEJORADO CON VISUALIZACIÓN Y EDICIÓN DE INGRESOS ---
         function procesarYRenderizarTableros() {
             const mesSeleccionadoStr = document.getElementById('filtro-mes').value;
             const anioSeleccionadoStr = document.getElementById('filtro-anio').value;
@@ -703,6 +704,7 @@
             let deduccionesSalario = 0; 
             let gastoNoNecesario = 0;
             let distribuciónCategorias = {}; 
+            let htmlIngresos = "";
             let htmlEjecutados = ""; 
             let htmlProyectados = "";
 
@@ -727,7 +729,7 @@
                 }
             });
 
-            // Movimientos Reales
+            // Procesamiento de Movimientos
             globalMovimientos.forEach(mov => {
                 const parts = mov.fecha.split('-');
                 const anioMov = parts[0];
@@ -750,11 +752,28 @@
                     }
                 }
 
+                if (anioMov !== anioSeleccionadoStr || mesMovStr !== mesMovStr) return;
                 if (anioMov !== anioSeleccionadoStr || mesMovStr !== mesSeleccionadoStr) return;
 
                 if (mov.tipo_movimiento === "Ingreso") {
                     if (mov.tipo_gasto === "Impuestos salario") deduccionesSalario += montoPesosEfectivo;
                     else ingresosTotales += montoPesosEfectivo;
+
+                    // CONSTRUIR ITEM DE INGRESO EDITABLE Y BORRABLE
+                    htmlIngresos += `
+                        <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-emerald-900/30 text-xs mb-1.5">
+                            <div class="space-y-1">
+                                <span class="font-bold text-slate-200">${mov.concepto}</span>
+                                <p class="text-[10px] text-slate-400">${mov.fecha} · <span class="text-emerald-400 font-semibold">${mov.tipo_gasto}</span></p>
+                            </div>
+                            <div class="text-right flex items-center gap-2">
+                                <span class="text-[10px] text-slate-500 font-mono font-bold">AR$</span>
+                                <input type="number" value="${montoPesosEfectivo.toFixed(2)}" onchange="modificarMontoLocal('${mov.id}', this.value)" class="w-24 bg-slate-950 border border-emerald-700/50 rounded text-right px-1 font-mono font-bold text-emerald-300 focus:border-emerald-500 focus:outline-none">
+                                <button onclick="borrarMovimientoLocal('${mov.id}')" class="text-slate-500 hover:text-red-500 font-bold text-sm ml-1 transition-colors px-1" title="Eliminar este ingreso">×</button>
+                            </div>
+                        </div>
+                    `;
+
                 } else if (mov.tipo_movimiento === "Gasto") {
                     gastosTotales += montoPesosEfectivo;
                     if (mov.gasto_necesario === "No necesario") gastoNoNecesario += montoPesosEfectivo;
@@ -840,6 +859,7 @@
             document.getElementById('card-no-necesario').textContent = `$${gastoNoNecesario.toLocaleString('es-AR')}`;
             document.getElementById('card-ahorro-pct').textContent = `${pctAhorro}% del ingreso`;
 
+            document.getElementById('lista-ingresos').innerHTML = htmlIngresos || '<p class="text-xs text-slate-500 p-2 italic">Sin ingresos registrados en este período.</p>';
             document.getElementById('lista-ejecutados').innerHTML = htmlEjecutados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos variables registrados en este período.</p>';
             document.getElementById('lista-proyectados').innerHTML = htmlProyectados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos fijos en este período.</p>';
 

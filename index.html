@@ -130,7 +130,7 @@
         <!-- TARJETAS INDICADORAS -->
         <section class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                <p class="text-xs font-semibold text-slate-400 mb-1">Ingresos Totales</p>
+                <p class="text-xs font-semibold text-slate-400 mb-1">Ingresos Totales (Mes)</p>
                 <h3 id="card-ingresos" class="text-xl sm:text-2xl font-black text-emerald-400">$0</h3>
             </div>
             <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
@@ -138,13 +138,13 @@
                 <h3 id="card-gastos" class="text-xl sm:text-2xl font-black text-rose-400">$0</h3>
             </div>
             <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                <p class="text-xs font-semibold text-slate-400 mb-1">Ahorro Neto</p>
+                <p class="text-xs font-semibold text-slate-400 mb-1">Ahorro del Mes</p>
                 <h3 id="card-ahorro" class="text-xl sm:text-2xl font-black text-blue-400">$0</h3>
                 <p id="card-ahorro-pct" class="text-[10px] text-slate-400 mt-0.5">0% del ingreso</p>
             </div>
             <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
-                <p class="text-xs font-semibold text-slate-400 mb-1">Salario Neto</p>
-                <h3 id="card-salario-neto" class="text-xl sm:text-2xl font-black text-cyan-400">$0</h3>
+                <p class="text-xs font-semibold text-slate-400 mb-1">Ahorro Acumulado (Anterior)</p>
+                <h3 id="card-ahorro-acumulado" class="text-xl sm:text-2xl font-black text-teal-400">$0</h3>
             </div>
             <div class="bg-darkCard p-4 rounded-2xl border border-slate-800 col-span-2 lg:col-span-1">
                 <p class="text-xs font-semibold text-slate-400 mb-1">⚠️ Gasto No Nec.</p>
@@ -286,6 +286,7 @@
                             <option value="Ingresos Javi">Ingresos Javi</option>
                             <option value="Ingresos Meli">Ingresos Meli</option>
                             <option value="Ingresos extras">Ingresos extras</option>
+                            <option value="Ahorro / Saldo Inicial">Ahorro / Saldo Inicial</option>
                             <option value="Impuestos salario">Impuestos salario</option>
                         </select>
                     </div>
@@ -306,7 +307,7 @@
             </div>
         </div>
 
-        <!-- PESTAÑA 4: LISTADO DE MOVIMIENTOS (EN 3 COLUMNAS: INGRESOS, GASTOS VAR, GASTOS FIJOS) -->
+        <!-- PESTAÑA 4: LISTADO DE MOVIMIENTOS -->
         <div id="tab-movimientos" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div class="bg-darkCard p-4 rounded-2xl border border-slate-800">
@@ -351,6 +352,7 @@
             "Ingresos Javi": ["Salario", "Alpe Ingenieria", "Venta", "Financiera de activos"],
             "Ingresos Meli": ["Salario", "Venta"],
             "Ingresos extras": ["Ganancias"],
+            "Ahorro / Saldo Inicial": ["Ahorro mes anterior", "Rendimientos / Inversiones"],
             "Impuestos salario": ["Jubilación", "Ganancias", "O social"]
         };
 
@@ -692,7 +694,38 @@
             } catch (err) { alert("Error al guardar: " + err.message); }
         }
 
-        // --- RENDERIZADO MEJORADO CON VISUALIZACIÓN Y EDICIÓN DE INGRESOS ---
+        // --- CÁLCULO DE AHORRO ACUMULADO Y RENDERIZADO GENERAL ---
+        function calcularAhorroAcumuladoAnterior(anioFiltro, mesFiltro) {
+            const limiteAnio = parseInt(anioFiltro);
+            const limiteMes = parseInt(mesFiltro);
+
+            let acumulado = 0;
+
+            globalMovimientos.forEach(m => {
+                const parts = m.fecha.split('-');
+                const a = parseInt(parts[0]);
+                const mes = parseInt(parts[1]);
+
+                // CORTE DESDE SEPTIEMBRE 2026 EN ADELANTE
+                if (a < 2026 || (a === 2026 && mes < 9)) return;
+
+                if (a < limiteAnio || (a === limiteAnio && mes < limiteMes)) {
+                    let val = m.monto_pesos;
+                    if (m.monto_uva && parseFloat(m.monto_uva) > 0) {
+                        val = parseFloat(m.monto_uva) * obtenerValorUvaDia10(parts[0], parts[1]);
+                    }
+
+                    if (m.tipo_movimiento === "Ingreso" && m.tipo_gasto !== "Impuestos salario") {
+                        acumulado += val;
+                    } else if (m.tipo_movimiento === "Gasto") {
+                        acumulado -= val;
+                    }
+                }
+            });
+
+            return acumulado > 0 ? acumulado : 0;
+        }
+
         function procesarYRenderizarTableros() {
             const mesSeleccionadoStr = document.getElementById('filtro-mes').value;
             const anioSeleccionadoStr = document.getElementById('filtro-anio').value;
@@ -719,7 +752,6 @@
                 bolsaUvaMeses[m] = obtenerValorUvaDia10(anioSeleccionadoStr, mesStrPadded);
             });
 
-            // Plantilla de Fijos Únicos
             let fijosUnicosPlantilla = [];
             globalMovimientos.forEach(m => {
                 if (m.tipo_movimiento === "Gasto" && m.fijo_variable === "FIJO") {
@@ -729,7 +761,6 @@
                 }
             });
 
-            // Procesamiento de Movimientos
             globalMovimientos.forEach(mov => {
                 const parts = mov.fecha.split('-');
                 const anioMov = parts[0];
@@ -752,14 +783,12 @@
                     }
                 }
 
-                if (anioMov !== anioSeleccionadoStr || mesMovStr !== mesMovStr) return;
                 if (anioMov !== anioSeleccionadoStr || mesMovStr !== mesSeleccionadoStr) return;
 
                 if (mov.tipo_movimiento === "Ingreso") {
                     if (mov.tipo_gasto === "Impuestos salario") deduccionesSalario += montoPesosEfectivo;
                     else ingresosTotales += montoPesosEfectivo;
 
-                    // CONSTRUIR ITEM DE INGRESO EDITABLE Y BORRABLE
                     htmlIngresos += `
                         <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-xl border border-emerald-900/30 text-xs mb-1.5">
                             <div class="space-y-1">
@@ -806,7 +835,6 @@
                 }
             });
 
-            // Proyección de Fijos Editables
             fijosUnicosPlantilla.forEach(fijo => {
                 let yaExisteEnEsteMes = globalMovimientos.some(mReal => 
                     mReal.concepto === fijo.concepto && 
@@ -848,14 +876,17 @@
                 }
             });
 
-            const ahorroNeto = ingresosTotales - gastosTotales;
-            const salarioNetoBolsillo = ingresosTotales - deduccionesSalario;
-            const pctAhorro = ingresosTotales > 0 ? ((ahorroNeto / ingresosTotales) * 100).toFixed(1) : 0;
+            // AHORRO Y DISPONIBILIDAD TOTAL
+            const ahorroNetoMes = ingresosTotales - gastosTotales;
+            const ahorroAcumuladoAnterior = calcularAhorroAcumuladoAnterior(anioSeleccionadoStr, mesSeleccionadoStr);
+            const disponibilidadTotalReal = ahorroAcumuladoAnterior + ingresosTotales - gastosTotales;
+
+            const pctAhorro = ingresosTotales > 0 ? ((ahorroNetoMes / ingresosTotales) * 100).toFixed(1) : 0;
 
             document.getElementById('card-ingresos').textContent = `$${ingresosTotales.toLocaleString('es-AR')}`;
             document.getElementById('card-gastos').textContent = `$${gastosTotales.toLocaleString('es-AR')}`;
-            document.getElementById('card-ahorro').textContent = `$${ahorroNeto.toLocaleString('es-AR')}`;
-            document.getElementById('card-salario-neto').textContent = `$${salarioNetoBolsillo.toLocaleString('es-AR')}`;
+            document.getElementById('card-ahorro').textContent = `$${ahorroNetoMes.toLocaleString('es-AR')}`;
+            document.getElementById('card-ahorro-acumulado').textContent = `$${ahorroAcumuladoAnterior.toLocaleString('es-AR')}`;
             document.getElementById('card-no-necesario').textContent = `$${gastoNoNecesario.toLocaleString('es-AR')}`;
             document.getElementById('card-ahorro-pct').textContent = `${pctAhorro}% del ingreso`;
 
@@ -864,12 +895,12 @@
             document.getElementById('lista-proyectados').innerHTML = htmlProyectados || '<p class="text-xs text-slate-500 p-2 italic">Sin gastos fijos en este período.</p>';
 
             document.getElementById('resumen-texto-dashboard').innerHTML = `
-                <div class="flex justify-between border-b border-slate-800 pb-2"><span>💰 Ingresos Totales de este período:</span><span class="font-bold text-emerald-400">$${ingresosTotales.toLocaleString('es-AR')}</span></div>
-                <div class="flex justify-between border-b border-slate-800 pb-2"><span>💼 Salario de Bolsillo Disponible:</span><span class="font-black text-cyan-400">$${salarioNetoBolsillo.toLocaleString('es-AR')}</span></div>
+                <div class="flex justify-between border-b border-slate-800 pb-2"><span>🏦 Ahorro Acumulado (Meses anteriores):</span><span class="font-bold text-teal-400">$${ahorroAcumuladoAnterior.toLocaleString('es-AR')}</span></div>
+                <div class="flex justify-between border-b border-slate-800 pb-2"><span>💰 Ingresos Propios de este mes:</span><span class="font-bold text-emerald-400">$${ingresosTotales.toLocaleString('es-AR')}</span></div>
                 <div class="flex justify-between border-b border-slate-800 pb-2"><span>🛒 Compromiso de Gastos (Fijos + Var):</span><span class="font-bold text-slate-200">$${gastosTotales.toLocaleString('es-AR')}</span></div>
                 <div class="flex justify-between border-b border-slate-800 pb-2 text-amber-400"><span>🍿 Erogación No Necesaria:</span><span>$${gastoNoNecesario.toLocaleString('es-AR')}</span></div>
-                <div class="flex justify-between p-2.5 rounded-xl ${ahorroNeto >= 0 ? 'bg-emerald-950/40 border border-emerald-500/20' : 'bg-rose-950/40 border border-rose-500/20'} mt-4">
-                    <span class="font-bold text-slate-200">EXCEDENTE ESTIMADO:</span><span class="font-black text-base ${ahorroNeto >= 0 ? 'text-emerald-300' : 'text-rose-300'}">$${ahorroNeto.toLocaleString('es-AR')} (${pctAhorro}%)</span>
+                <div class="flex justify-between p-2.5 rounded-xl ${disponibilidadTotalReal >= 0 ? 'bg-emerald-950/40 border border-emerald-500/20' : 'bg-rose-950/40 border border-rose-500/20'} mt-4">
+                    <span class="font-bold text-slate-200">DISPONIBILIDAD TOTAL REAL:</span><span class="font-black text-base ${disponibilidadTotalReal >= 0 ? 'text-emerald-300' : 'text-rose-300'}">$${disponibilidadTotalReal.toLocaleString('es-AR')}</span>
                 </div>
             `;
 
